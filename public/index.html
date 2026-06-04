@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Knowledge Base</title>
+    <script src="api.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@13/marked.min.js"></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      :root {
+        --bg: #0f1117;
+        --surface: #1a1d27;
+        --surface2: #22263a;
+        --border: #2e3350;
+        --text: #e2e4f0;
+        --muted: #7c82a1;
+        --accent: #4f6ef7;
+        --accent-hover: #6b85ff;
+        --green: #34c77b;
+        --yellow: #f5c542;
+        --red: #e05c5c;
+        --blue: #48a9f8;
+        --radius: 10px;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      .hidden { display: none !important; }
+
+      /* ─── Login ──────────────────────────────────────────────────── */
+      #screen-login {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .login-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 48px 40px;
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+      }
+
+      .login-logo {
+        width: 52px;
+        height: 52px;
+        background: var(--accent);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto 20px;
+      }
+
+      .login-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+      }
+
+      .login-subtitle {
+        font-size: 0.875rem;
+        color: var(--muted);
+        margin-bottom: 40px;
+      }
+
+      .btn-oauth {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 12px 20px;
+        border-radius: 9px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: opacity 0.15s, transform 0.1s;
+        margin-bottom: 12px;
+      }
+      .btn-oauth:hover { opacity: 0.92; transform: translateY(-1px); }
+      .btn-oauth:active { transform: translateY(0); }
+      .btn-google { background: #fff; color: #333; }
+      .btn-microsoft { background: #2f2f2f; color: #fff; border: 1px solid #444; }
+
+      /* ─── App Header ─────────────────────────────────────────────── */
+      .app-header {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .header-icon {
+        width: 36px;
+        height: 36px;
+        background: var(--accent);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+        flex-shrink: 0;
+      }
+
+      .header-title {
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .header-user {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .header-name {
+        font-size: 0.83rem;
+        color: var(--muted);
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .btn-signout {
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        transition: border-color 0.15s, color 0.15s;
+        white-space: nowrap;
+      }
+      .btn-signout:hover { border-color: var(--text); color: var(--text); }
+
+      /* ─── Admin Layout ───────────────────────────────────────────── */
+      .admin-body { padding: 28px 24px; }
+
+      .admin-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      @media (max-width: 800px) { .admin-layout { grid-template-columns: 1fr; } }
+
+      /* ─── Cards ──────────────────────────────────────────────────── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+      }
+
+      .card-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      h2 {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      /* ─── Buttons ────────────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 16px;
+        border-radius: 7px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: background 0.15s, opacity 0.15s;
+      }
+      .btn-primary { background: var(--accent); color: #fff; width: 100%; justify-content: center; }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-primary:disabled { opacity: 0.5; cursor: default; }
+      .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+      .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+      .btn-sm { padding: 5px 10px; font-size: 0.78rem; }
+      .btn-danger { background: rgba(224,92,92,0.15); color: var(--red); border: 1px solid rgba(224,92,92,0.3); }
+      .btn-danger:hover { background: rgba(224,92,92,0.25); }
+      .btn-success { background: rgba(52,199,123,0.15); color: var(--green); border: 1px solid rgba(52,199,123,0.3); }
+      .btn-success:hover { background: rgba(52,199,123,0.25); }
+
+      /* ─── Upload ─────────────────────────────────────────────────── */
+      .drop-zone {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 32px 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        margin-bottom: 16px;
+      }
+      .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: rgba(79,110,247,0.06); }
+      .drop-zone-icon { font-size: 2rem; margin-bottom: 8px; }
+      .drop-zone-label { font-size: 0.9rem; color: var(--muted); }
+      .drop-zone-label strong { color: var(--accent); cursor: pointer; }
+      .drop-zone-types { font-size: 0.75rem; color: var(--muted); margin-top: 6px; }
+      #fileInput { display: none; }
+
+      .selected-file {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--surface2);
+        border-radius: 7px;
+        font-size: 0.85rem;
+        margin-bottom: 12px;
+      }
+      .selected-file.visible { display: flex; }
+      .selected-file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .selected-file-clear { cursor: pointer; color: var(--muted); font-size: 1rem; flex-shrink: 0; }
+      .selected-file-clear:hover { color: var(--red); }
+
+      .upload-progress {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 7px;
+        font-size: 0.85rem;
+        display: none;
+      }
+      .upload-progress.success { background: rgba(52,199,123,0.1); color: var(--green); border: 1px solid rgba(52,199,123,0.2); }
+      .upload-progress.error { background: rgba(224,92,92,0.1); color: var(--red); border: 1px solid rgba(224,92,92,0.2); }
+      .upload-progress.loading { background: rgba(79,110,247,0.1); color: var(--accent); border: 1px solid rgba(79,110,247,0.2); }
+
+      /* ─── Documents ──────────────────────────────────────────────── */
+      .doc-list { display: flex; flex-direction: column; gap: 8px; }
+
+      .doc-item {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 14px;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        user-select: none;
+      }
+      .doc-item:hover { border-color: var(--accent); }
+      .doc-item.active { border-color: var(--accent); background: rgba(79,110,247,0.08); }
+
+      .doc-header { display: flex; align-items: center; gap: 10px; }
+      .doc-icon { font-size: 1.2rem; flex-shrink: 0; }
+      .doc-name { flex: 1; font-size: 0.9rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .doc-meta { display: flex; gap: 8px; align-items: center; margin-top: 6px; padding-left: 30px; font-size: 0.78rem; color: var(--muted); }
+
+      /* ─── Badges ─────────────────────────────────────────────────── */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 8px;
+        border-radius: 99px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .badge-pending { background: rgba(124,130,161,0.15); color: var(--muted); }
+      .badge-extracting { background: rgba(72,169,248,0.15); color: var(--blue); }
+      .badge-chunking { background: rgba(245,197,66,0.15); color: var(--yellow); }
+      .badge-ready { background: rgba(52,199,123,0.15); color: var(--green); }
+      .badge-failed { background: rgba(224,92,92,0.15); color: var(--red); }
+      .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+      .badge-extracting .badge-dot, .badge-chunking .badge-dot { animation: pulse 1.2s ease-in-out infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+      /* ─── Chunks Panel ───────────────────────────────────────────── */
+      .chunks-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        display: none;
+        flex-direction: column;
+        max-height: 600px;
+        overflow: hidden;
+      }
+      .chunks-panel.visible { display: flex; }
+      .chunks-panel-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .chunks-panel-title { flex: 1; font-size: 0.95rem; font-weight: 600; }
+      .chunks-list { overflow-y: auto; flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+      .chunk-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; transition: opacity 0.15s; }
+      .chunk-item.disabled { opacity: 0.45; }
+      .chunk-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+      .chunk-index { font-size: 0.72rem; font-weight: 700; color: var(--muted); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
+      .chunk-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+      .chunk-content { font-size: 0.82rem; line-height: 1.5; color: var(--muted); white-space: pre-wrap; word-break: break-word; }
+      .chunk-edited-badge { display: inline-block; font-size: 0.68rem; background: rgba(245,197,66,0.15); color: var(--yellow); padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 600; }
+      .chunk-edit-area { display: none; margin-top: 8px; }
+      .chunk-edit-area.visible { display: block; }
+      .chunk-edit-area textarea { width: 100%; min-height: 100px; background: var(--surface); border: 1px solid var(--accent); border-radius: 6px; color: var(--text); font-size: 0.82rem; line-height: 1.5; padding: 8px; resize: vertical; outline: none; font-family: inherit; }
+      .chunk-edit-actions { display: flex; gap: 6px; margin-top: 6px; }
+
+      /* ─── Toggle ─────────────────────────────────────────────────── */
+      .toggle { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+      .toggle input { display: none; }
+      .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 99px; cursor: pointer; transition: background 0.2s; }
+      .toggle input:checked ~ .toggle-track { background: var(--green); }
+      .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 0.2s; pointer-events: none; }
+      .toggle input:checked ~ .toggle-thumb { transform: translateX(14px); }
+
+      /* ─── Tabs ───────────────────────────────────────────────────── */
+      .tab-bar { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+      .tab { padding: 8px 14px; font-size: 0.85rem; font-weight: 600; color: var(--muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+      .tab:hover { color: var(--text); }
+      .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+
+      /* ─── Search ─────────────────────────────────────────────────── */
+      .search-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+      .search-bar input { flex: 1; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.15s; }
+      .search-bar input:focus { border-color: var(--accent); }
+      .search-result { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+      .search-result-header { display: flex; align-items: center; gap: 8px; }
+      .search-result-filename { flex: 1; font-size: 0.85rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .similarity-badge { flex-shrink: 0; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+      .sim-high { background: rgba(52,199,123,0.15); color: var(--green); }
+      .sim-medium { background: rgba(245,197,66,0.15); color: var(--yellow); }
+      .sim-low { background: rgba(124,130,161,0.15); color: var(--muted); }
+      .search-result-content { font-size: 0.82rem; line-height: 1.5; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+      .search-results-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+
+      /* ─── Chat (shared) ──────────────────────────────────────────── */
+      .chat-wrap { display: flex; flex-direction: column; height: 520px; }
+      .chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 2px 8px; }
+      .chat-bubble-row { display: flex; flex-direction: column; gap: 4px; }
+      .chat-bubble-row.user { align-items: flex-end; }
+      .chat-bubble-row.assistant { align-items: flex-start; }
+      .chat-bubble { max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 0.875rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+      .chat-bubble-row.user .chat-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+      .chat-bubble-row.assistant .chat-bubble { background: var(--surface2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+      .chat-sources { max-width: 82%; margin-top: 2px; }
+      .chat-sources-toggle { font-size: 0.72rem; color: var(--muted); cursor: pointer; background: none; border: none; padding: 0; text-align: left; }
+      .chat-sources-toggle:hover { color: var(--text); }
+      .chat-sources-list { display: none; margin-top: 6px; flex-direction: column; gap: 4px; }
+      .chat-sources-list.open { display: flex; }
+      .chat-source-chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 0.75rem; color: var(--muted); }
+      .chat-input-row { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); margin-top: 8px; }
+      .chat-input-row input { flex: 1; padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.9rem; outline: none; transition: border-color 0.15s; }
+      .chat-input-row input:focus { border-color: var(--accent); }
+      .chat-typing { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; border-bottom-left-radius: 4px; font-size: 0.82rem; color: var(--muted); max-width: 82%; }
+      .no-sources-note { font-size: 0.72rem; color: var(--muted); font-style: italic; }
+
+      /* ─── Markdown inside assistant bubbles ──────────────────────── */
+      .chat-bubble.md p { margin: 0 0 8px; }
+      .chat-bubble.md p:last-child { margin-bottom: 0; }
+      .chat-bubble.md ul, .chat-bubble.md ol { margin: 4px 0 8px 18px; }
+      .chat-bubble.md li { margin-bottom: 3px; }
+      .chat-bubble.md strong { font-weight: 700; }
+      .chat-bubble.md em { font-style: italic; }
+      .chat-bubble.md h1, .chat-bubble.md h2, .chat-bubble.md h3 { font-weight: 700; margin: 10px 0 4px; line-height: 1.3; }
+      .chat-bubble.md h1 { font-size: 1.05em; }
+      .chat-bubble.md h2 { font-size: 0.97em; }
+      .chat-bubble.md h3 { font-size: 0.92em; }
+      .chat-bubble.md code { font-family: "SF Mono", Menlo, monospace; font-size: 0.85em; background: rgba(0,0,0,0.25); padding: 1px 5px; border-radius: 4px; }
+      .chat-bubble.md pre { background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; overflow-x: auto; margin: 8px 0; }
+      .chat-bubble.md pre code { background: none; padding: 0; font-size: 0.82em; }
+      .chat-bubble.md blockquote { border-left: 3px solid var(--accent); padding-left: 10px; color: var(--muted); margin: 6px 0; }
+      .chat-bubble.md a { color: var(--accent); text-decoration: underline; }
+
+      /* ─── Full-page chat (regular users) ─────────────────────────── */
+      #screen-chat { display: flex; flex-direction: column; min-height: 100vh; }
+      .chat-page-body { flex: 1; display: flex; flex-direction: column; padding: 24px; max-width: 860px; width: 100%; margin: 0 auto; }
+      .chat-page-body .chat-wrap { flex: 1; height: auto; min-height: 0; }
+      .chat-page-body .chat-messages { max-height: calc(100vh - 180px); }
+
+      /* ─── Misc ───────────────────────────────────────────────────── */
+      .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+      .empty-state-icon { font-size: 2.5rem; margin-bottom: 8px; }
+      .empty-state p { font-size: 0.9rem; }
+      .loading-overlay { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 32px; color: var(--muted); font-size: 0.875rem; }
+      .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+      .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.2); border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+
+    <!-- ─── LOGIN ─────────────────────────────────────────────────── -->
+    <div id="screen-login" class="hidden">
+      <div class="login-card">
+        <div class="login-logo">📚</div>
+        <div class="login-title">Knowledge Base</div>
+        <div class="login-subtitle">Sign in to continue</div>
+
+        <button class="btn-oauth btn-google" onclick="googleOAuth()">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path fill="#4285F4" d="M23.745 12.27c0-.79-.07-1.54-.19-2.27h-11.3v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+            <path fill="#34A853" d="M12.255 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96h-3.98v3.09C3.515 21.3 7.565 24 12.255 24z"/>
+            <path fill="#FBBC05" d="M5.525 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62h-3.98a11.86 11.86 0 000 10.76l3.98-3.09z"/>
+            <path fill="#EA4335" d="M12.255 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C18.205 1.19 15.495 0 12.255 0c-4.69 0-8.74 2.7-10.71 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <button class="btn-oauth btn-microsoft" onclick="microsoftOAuth()">
+          <svg viewBox="0 0 21 21" width="18" height="18" aria-hidden="true">
+            <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+            <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+            <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+            <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+          </svg>
+          Continue with Microsoft
+        </button>
+      </div>
+    </div>
+
+    <!-- ─── ADMIN ──────────────────────────────────────────────────── -->
+    <div id="screen-admin" class="hidden">
+      <div class="app-header">
+        <div class="header-icon">📚</div>
+        <div class="header-title">Knowledge Base</div>
+        <div class="header-user">
+          <span class="header-name" id="adminUserName"></span>
+          <button class="btn-signout" onclick="handleLogout()">Sign out</button>
+        </div>
+      </div>
+
+      <div class="admin-body">
+        <div class="admin-layout">
+
+          <!-- Left: Upload -->
+          <div>
+            <div class="card">
+              <div class="card-title"><h2>Upload Document</h2></div>
+
+              <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-icon">⬆️</div>
+                <div class="drop-zone-label">
+                  Drop file here or <strong id="browseLink">browse</strong>
+                </div>
+                <div class="drop-zone-types">PDF · DOCX · PPTX · MD</div>
+              </div>
+              <input
+                type="file"
+                id="fileInput"
+                accept=".pdf,.docx,.pptx,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/markdown,text/x-markdown"
+              />
+
+              <div class="selected-file" id="selectedFile">
+                <span>📄</span>
+                <span class="selected-file-name" id="selectedFileName"></span>
+                <span class="selected-file-clear" id="clearFile" title="Remove">✕</span>
+              </div>
+
+              <button class="btn btn-primary" id="uploadBtn" disabled>
+                <span id="uploadBtnIcon">⬆️</span> Upload &amp; Process
+              </button>
+
+              <div class="upload-progress" id="uploadProgress"></div>
+            </div>
+
+            <div class="card" style="margin-top: 16px">
+              <div class="card-title" style="margin-bottom: 0"><h2>Pipeline Stages</h2></div>
+              <hr class="divider" />
+              <div style="font-size: 0.8rem; color: var(--muted); line-height: 1.7; display: flex; flex-direction: column; gap: 8px;">
+                <div>📥 <strong style="color: var(--text)">PENDING</strong> — Queued for extraction</div>
+                <div>🔍 <strong style="color: var(--blue)">EXTRACTING</strong> — Reading raw text</div>
+                <div>✂️ <strong style="color: var(--yellow)">CHUNKING</strong> — Splitting &amp; embedding</div>
+                <div>✅ <strong style="color: var(--green)">READY</strong> — Indexed and searchable</div>
+                <div>❌ <strong style="color: var(--red)">FAILED</strong> — Check worker logs</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Tabs -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="card" style="display: flex; flex-direction: column;">
+              <div class="tab-bar">
+                <button class="tab active" id="tabDocuments" onclick="switchTab('documents')">Documents</button>
+                <button class="tab" id="tabSearch" onclick="switchTab('search')">Search</button>
+                <button class="tab" id="tabAdminChat" onclick="switchTab('adminChat')">Chat</button>
+                <button class="btn btn-ghost btn-sm" id="refreshBtn" title="Refresh" style="margin-left: auto" onclick="loadDocuments()">↺ Refresh</button>
+              </div>
+
+              <!-- Documents view -->
+              <div id="viewDocuments">
+                <div class="doc-list" id="docList">
+                  <div class="loading-overlay"><div class="spinner"></div> Loading…</div>
+                </div>
+              </div>
+
+              <!-- Search view -->
+              <div id="viewSearch" style="display: none">
+                <div class="search-bar">
+                  <input type="text" id="searchQuery" placeholder="Search knowledge base…" />
+                  <button class="btn btn-ghost btn-sm" id="searchBtn" onclick="runSearch()">Search</button>
+                </div>
+                <div class="search-results-list" id="searchResults">
+                  <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <p>Enter a query to search embedded chunks</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Admin Chat view -->
+              <div id="viewAdminChat" style="display: none">
+                <div class="chat-wrap">
+                  <div class="chat-messages" id="adminChatMessages">
+                    <div class="chat-bubble-row assistant">
+                      <div class="chat-bubble">Hi! Ask me anything — I'll search the knowledge base and answer based on what I find.</div>
+                    </div>
+                  </div>
+                  <div class="chat-input-row">
+                    <input type="text" id="adminChatInput" placeholder="Ask a question…" />
+                    <button class="btn btn-primary btn-sm" id="adminChatSendBtn" style="width: auto" onclick="sendAdminChat()">Send</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chunks panel -->
+            <div class="chunks-panel" id="chunksPanel">
+              <div class="chunks-panel-header">
+                <span id="chunksPanelIcon">📄</span>
+                <span class="chunks-panel-title" id="chunksPanelTitle">Chunks</span>
+                <button class="btn btn-ghost btn-sm" id="closeChunksBtn" onclick="closeChunks()">✕ Close</button>
+              </div>
+              <div class="chunks-list" id="chunksList">
+                <div class="loading-overlay"><div class="spinner"></div> Loading chunks…</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── CHAT (regular users) ───────────────────────────────────── -->
+    <div id="screen-chat" class="hidden">
+      <div class="app-header">
+        <div class="header-icon">📚</div>
+        <div class="header-title">Knowledge Base</div>
+        <div class="header-user">
+          <span class="header-name" id="chatUserName"></span>
+          <button class="btn-signout" onclick="handleLogout()">Sign out</button>
+        </div>
+      </div>
+
+      <div class="chat-page-body">
+        <div class="chat-wrap">
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-bubble-row assistant">
+              <div class="chat-bubble">Hi! Ask me anything — I'll search the knowledge base and answer based on what I find.</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="chatInput" placeholder="Ask a question…" />
+            <button class="btn btn-primary btn-sm" id="chatSendBtn" style="width: auto" onclick="sendChat()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const FILE_ICONS = { PDF: "📕", DOCX: "📘", PPTX: "📙", MD: "📝" };
+      let currentUser = null;
+      let selectedFile = null;
+      let activeDocId = null;
+      let pollTimer = null;
+      let chatHistory = [];
+      let adminChatHistory = [];
+
+      // ─── Init ──────────────────────────────────────────────────────
+      async function init() {
+        try {
+          const res = await fetch("/user", { credentials: "include" });
+          if (!res.ok) { showScreen("login"); return; }
+          const user = await res.json();
+          currentUser = user;
+          const role = user.db?.role?.toLowerCase();
+          if (role === "admin") {
+            document.getElementById("adminUserName").textContent = user.username || user.email || "";
+            showScreen("admin");
+            loadDocuments();
+          } else {
+            document.getElementById("chatUserName").textContent = user.username || user.email || "";
+            showScreen("chat");
+          }
+        } catch {
+          showScreen("login");
+        }
+      }
+
+      function showScreen(name) {
+        ["login", "admin", "chat"].forEach(s => {
+          document.getElementById("screen-" + s).classList.add("hidden");
+        });
+        document.getElementById("screen-" + name).classList.remove("hidden");
+      }
+
+      async function handleLogout() {
+        await logout();
+        currentUser = null;
+        showScreen("login");
+      }
+
+      function escHtml(str) {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      // ─── Upload ────────────────────────────────────────────────────
+      const dropZone = document.getElementById("dropZone");
+      const fileInput = document.getElementById("fileInput");
+
+      document.getElementById("browseLink").addEventListener("click", () => fileInput.click());
+      dropZone.addEventListener("click", () => fileInput.click());
+      dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+      dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+      dropZone.addEventListener("drop", e => {
+        e.preventDefault();
+        dropZone.classList.remove("drag-over");
+        if (e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]);
+      });
+      fileInput.addEventListener("change", () => { if (fileInput.files.length) setFile(fileInput.files[0]); });
+      document.getElementById("clearFile").addEventListener("click", clearFile);
+
+      function setFile(f) {
+        selectedFile = f;
+        document.getElementById("selectedFileName").textContent = f.name;
+        document.getElementById("selectedFile").classList.add("visible");
+        dropZone.style.display = "none";
+        document.getElementById("uploadBtn").disabled = false;
+      }
+
+      function clearFile() {
+        selectedFile = null;
+        fileInput.value = "";
+        document.getElementById("selectedFile").classList.remove("visible");
+        dropZone.style.display = "";
+        document.getElementById("uploadBtn").disabled = true;
+        showProgress(null);
+      }
+
+      document.getElementById("uploadBtn").addEventListener("click", async () => {
+        if (!selectedFile) return;
+        document.getElementById("uploadBtn").disabled = true;
+        document.getElementById("uploadBtnIcon").innerHTML = '<span class="spinner"></span>';
+        showProgress("loading", "⏳ Uploading…");
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        try {
+          const res = await fetch("/api/knowledge/upload", { method: "POST", body: formData, credentials: "include" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || res.statusText);
+          showProgress("success", "✅ Document queued — ID: " + data.id);
+          clearFile();
+          loadDocuments();
+        } catch (err) {
+          showProgress("error", "❌ " + err.message);
+        } finally {
+          document.getElementById("uploadBtn").disabled = !selectedFile;
+          document.getElementById("uploadBtnIcon").textContent = "⬆️";
+        }
+      });
+
+      function showProgress(type, msg) {
+        const el = document.getElementById("uploadProgress");
+        if (!type) { el.style.display = "none"; return; }
+        el.className = "upload-progress " + type;
+        el.style.display = "block";
+        el.textContent = msg;
+      }
+
+      // ─── Documents ─────────────────────────────────────────────────
+      async function loadDocuments() {
+        clearPoll();
+        const list = document.getElementById("docList");
+        list.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Loading…</div>';
+        try {
+          const res = await fetch("/api/knowledge/documents", { credentials: "include" });
+          if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+          const docs = await res.json();
+          renderDocuments(docs);
+        } catch (err) {
+          list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>${escHtml(err.message)}</p></div>`;
+        }
+      }
+
+      function renderDocuments(docs) {
+        const list = document.getElementById("docList");
+        if (!docs.length) {
+          list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No documents yet — upload one to get started</p></div>';
+          return;
+        }
+        list.innerHTML = "";
+        for (const doc of docs) list.appendChild(buildDocItem(doc));
+        if (activeDocId) {
+          const el = document.querySelector(`.doc-item[data-id="${activeDocId}"]`);
+          if (el) el.classList.add("active");
+        }
+        const inProgress = docs.some(d => ["PENDING", "EXTRACTING", "CHUNKING"].includes(d.status));
+        if (inProgress) pollTimer = setTimeout(loadDocuments, 3000);
+      }
+
+      function buildDocItem(doc) {
+        const el = document.createElement("div");
+        el.className = "doc-item" + (activeDocId === doc.id ? " active" : "");
+        el.dataset.id = doc.id;
+        const chunkCount = doc._count?.chunks ?? 0;
+        const date = new Date(doc.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+        el.innerHTML = `
+          <div class="doc-header">
+            <span class="doc-icon">${FILE_ICONS[doc.fileType] || "📄"}</span>
+            <span class="doc-name" title="${escHtml(doc.filename)}">${escHtml(doc.filename)}</span>
+            <span class="badge badge-${doc.status.toLowerCase()}"><span class="badge-dot"></span>${doc.status}</span>
+          </div>
+          <div class="doc-meta">
+            <span>${chunkCount} chunk${chunkCount !== 1 ? "s" : ""}</span>
+            <span>·</span>
+            <span>${date}</span>
+          </div>`;
+        el.addEventListener("click", () => {
+          document.querySelectorAll(".doc-item").forEach(i => i.classList.remove("active"));
+          el.classList.add("active");
+          activeDocId = doc.id;
+          openChunks(doc);
+        });
+        return el;
+      }
+
+      function clearPoll() {
+        if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+      }
+
+      // ─── Chunks ────────────────────────────────────────────────────
+      function closeChunks() {
+        document.getElementById("chunksPanel").classList.remove("visible");
+        document.querySelectorAll(".doc-item").forEach(i => i.classList.remove("active"));
+        activeDocId = null;
+      }
+
+      async function openChunks(doc) {
+        const panel = document.getElementById("chunksPanel");
+        const list = document.getElementById("chunksList");
+        document.getElementById("chunksPanelIcon").textContent = FILE_ICONS[doc.fileType] || "📄";
+        document.getElementById("chunksPanelTitle").textContent = doc.filename;
+        panel.classList.add("visible");
+
+        if (doc.status !== "READY") {
+          const msgs = { PENDING: "⏳ Queued for processing…", EXTRACTING: "🔍 Extracting text…", CHUNKING: "✂️ Chunking and embedding…", FAILED: "❌ Processing failed" };
+          list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">${doc.status === "FAILED" ? "❌" : "⏳"}</div><p>${msgs[doc.status] || ""}</p></div>`;
+          return;
+        }
+
+        list.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Loading chunks…</div>';
+        try {
+          const res = await fetch(`/api/knowledge/documents/${doc.id}/chunks`, { credentials: "include" });
+          if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+          const chunks = await res.json();
+          renderChunks(chunks);
+        } catch (err) {
+          list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>${escHtml(err.message)}</p></div>`;
+        }
+      }
+
+      function renderChunks(chunks) {
+        const list = document.getElementById("chunksList");
+        if (!chunks.length) {
+          list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No chunks found</p></div>';
+          return;
+        }
+        list.innerHTML = "";
+        for (const chunk of chunks) list.appendChild(buildChunkItem(chunk));
+      }
+
+      function buildChunkItem(chunk) {
+        const el = document.createElement("div");
+        el.className = "chunk-item" + (chunk.enabled ? "" : " disabled");
+        el.dataset.id = chunk.id;
+        const displayContent = chunk.editedContent || chunk.content;
+        const isEdited = !!chunk.editedContent;
+        el.innerHTML = `
+          <div class="chunk-header">
+            <span class="chunk-index">#${chunk.chunkIndex + 1}</span>
+            ${isEdited ? '<span class="chunk-edited-badge">edited</span>' : ""}
+            <div class="chunk-actions">
+              <button class="btn btn-ghost btn-sm edit-btn" title="Edit content">✏️</button>
+              <label class="toggle" title="${chunk.enabled ? "Enabled" : "Disabled"}">
+                <input type="checkbox" ${chunk.enabled ? "checked" : ""} />
+                <span class="toggle-track"></span>
+                <span class="toggle-thumb"></span>
+              </label>
+            </div>
+          </div>
+          <div class="chunk-content">${escHtml(displayContent)}</div>
+          <div class="chunk-edit-area">
+            <textarea>${escHtml(displayContent)}</textarea>
+            <div class="chunk-edit-actions">
+              <button class="btn btn-success btn-sm save-edit-btn">✓ Save</button>
+              <button class="btn btn-danger btn-sm cancel-edit-btn">✕ Cancel</button>
+            </div>
+          </div>`;
+
+        const toggleInput = el.querySelector('input[type="checkbox"]');
+        const editBtn = el.querySelector(".edit-btn");
+        const editArea = el.querySelector(".chunk-edit-area");
+        const textarea = el.querySelector("textarea");
+        const saveBtn = el.querySelector(".save-edit-btn");
+        const cancelBtn = el.querySelector(".cancel-edit-btn");
+        const contentEl = el.querySelector(".chunk-content");
+
+        toggleInput.addEventListener("change", async () => {
+          const enabled = toggleInput.checked;
+          el.classList.toggle("disabled", !enabled);
+          try {
+            await patchChunk(chunk.id, { enabled });
+          } catch (err) {
+            toggleInput.checked = !enabled;
+            el.classList.toggle("disabled", enabled);
+            alert("Failed: " + err.message);
+          }
+        });
+
+        editBtn.addEventListener("click", () => {
+          textarea.value = chunk.editedContent || chunk.content;
+          editArea.classList.add("visible");
+          contentEl.style.display = "none";
+          editBtn.style.display = "none";
+          textarea.focus();
+        });
+
+        cancelBtn.addEventListener("click", () => {
+          editArea.classList.remove("visible");
+          contentEl.style.display = "";
+          editBtn.style.display = "";
+        });
+
+        saveBtn.addEventListener("click", async () => {
+          const newContent = textarea.value.trim();
+          if (!newContent) return;
+          saveBtn.disabled = true;
+          saveBtn.innerHTML = '<span class="spinner"></span>';
+          try {
+            await patchChunk(chunk.id, { editedContent: newContent });
+            chunk.editedContent = newContent;
+            contentEl.textContent = newContent;
+            editArea.classList.remove("visible");
+            contentEl.style.display = "";
+            editBtn.style.display = "";
+            const existing = el.querySelector(".chunk-edited-badge");
+            if (!existing) {
+              const badge = document.createElement("span");
+              badge.className = "chunk-edited-badge";
+              badge.textContent = "edited";
+              el.querySelector(".chunk-header").insertBefore(badge, el.querySelector(".chunk-actions"));
+            }
+          } catch (err) {
+            alert("Failed: " + err.message);
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "✓ Save";
+          }
+        });
+
+        return el;
+      }
+
+      async function patchChunk(chunkId, data) {
+        const res = await fetch(`/api/knowledge/chunks/${chunkId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+        return res.json();
+      }
+
+      // ─── Tabs ──────────────────────────────────────────────────────
+      function switchTab(tab) {
+        ["documents", "search", "adminChat"].forEach(t => {
+          const id = t.charAt(0).toUpperCase() + t.slice(1);
+          document.getElementById("tab" + id).classList.toggle("active", t === tab);
+          document.getElementById("view" + id).style.display = t === tab ? "" : "none";
+        });
+        document.getElementById("refreshBtn").style.display = tab === "documents" ? "" : "none";
+        if (tab === "search") document.getElementById("searchQuery").focus();
+        if (tab === "adminChat") document.getElementById("adminChatInput").focus();
+      }
+
+      // ─── Search ────────────────────────────────────────────────────
+      document.getElementById("searchQuery").addEventListener("keydown", e => { if (e.key === "Enter") runSearch(); });
+
+      async function runSearch() {
+        const q = document.getElementById("searchQuery").value.trim();
+        const resultsEl = document.getElementById("searchResults");
+        if (!q) {
+          resultsEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>Enter a search query</p></div>';
+          return;
+        }
+        resultsEl.innerHTML = '<div class="loading-overlay"><div class="spinner"></div> Searching…</div>';
+        document.getElementById("searchBtn").disabled = true;
+        try {
+          const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}&limit=8`, { credentials: "include" });
+          if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+          renderSearchResults(await res.json());
+        } catch (err) {
+          resultsEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>${escHtml(err.message)}</p></div>`;
+        } finally {
+          document.getElementById("searchBtn").disabled = false;
+        }
+      }
+
+      function renderSearchResults(results) {
+        const el = document.getElementById("searchResults");
+        if (!results.length) {
+          el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>No matching chunks found</p></div>';
+          return;
+        }
+        el.innerHTML = "";
+        for (const r of results) {
+          const pct = Math.round(r.similarity * 100);
+          const simClass = pct >= 75 ? "sim-high" : pct >= 50 ? "sim-medium" : "sim-low";
+          const content = r.editedContent || r.content;
+          const card = document.createElement("div");
+          card.className = "search-result";
+          card.innerHTML = `
+            <div class="search-result-header">
+              <span>${FILE_ICONS[r.fileType] || "📄"}</span>
+              <span class="search-result-filename" title="${escHtml(r.filename)}">${escHtml(r.filename)}</span>
+              <span class="similarity-badge ${simClass}">${pct}% match</span>
+            </div>
+            <div class="search-result-content">${escHtml(content)}</div>`;
+          el.appendChild(card);
+        }
+      }
+
+      // ─── Admin Chat ────────────────────────────────────────────────
+      document.getElementById("adminChatInput").addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAdminChat(); }
+      });
+
+      async function sendAdminChat() {
+        const input = document.getElementById("adminChatInput");
+        const message = input.value.trim();
+        if (!message) return;
+        input.value = "";
+        appendChatBubble("adminChatMessages", "user", message);
+        const typing = appendTypingIndicator("adminChatMessages");
+        document.getElementById("adminChatSendBtn").disabled = true;
+        try {
+          const res = await fetch("/api/knowledge/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, history: adminChatHistory }),
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+          const { reply, sources } = await res.json();
+          typing.remove();
+          appendChatBubble("adminChatMessages", "assistant", reply, sources);
+          adminChatHistory.push({ role: "user", content: message });
+          adminChatHistory.push({ role: "assistant", content: reply });
+        } catch (err) {
+          typing.remove();
+          appendChatBubble("adminChatMessages", "assistant", "⚠️ Error: " + err.message);
+        } finally {
+          document.getElementById("adminChatSendBtn").disabled = false;
+          input.focus();
+        }
+      }
+
+      // ─── User Chat ─────────────────────────────────────────────────
+      document.getElementById("chatInput").addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+      });
+
+      async function sendChat() {
+        const input = document.getElementById("chatInput");
+        const message = input.value.trim();
+        if (!message) return;
+        input.value = "";
+        appendChatBubble("chatMessages", "user", message);
+        const typing = appendTypingIndicator("chatMessages");
+        document.getElementById("chatSendBtn").disabled = true;
+        try {
+          const res = await fetch("/api/knowledge/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message, history: chatHistory }),
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+          const { reply, sources } = await res.json();
+          typing.remove();
+          appendChatBubble("chatMessages", "assistant", reply, sources);
+          chatHistory.push({ role: "user", content: message });
+          chatHistory.push({ role: "assistant", content: reply });
+        } catch (err) {
+          typing.remove();
+          appendChatBubble("chatMessages", "assistant", "⚠️ Error: " + err.message);
+        } finally {
+          document.getElementById("chatSendBtn").disabled = false;
+          input.focus();
+        }
+      }
+
+      // ─── Chat helpers ──────────────────────────────────────────────
+      function appendChatBubble(containerId, role, text, sources) {
+        const msgs = document.getElementById(containerId);
+        const row = document.createElement("div");
+        row.className = "chat-bubble-row " + role;
+        const bubble = document.createElement("div");
+        if (role === "assistant") {
+          bubble.className = "chat-bubble md";
+          bubble.innerHTML = marked.parse(text);
+        } else {
+          bubble.className = "chat-bubble";
+          bubble.textContent = text;
+        }
+        row.appendChild(bubble);
+        if (role === "assistant") row.appendChild(buildSourcesEl(sources));
+        msgs.appendChild(row);
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+
+      function appendTypingIndicator(containerId) {
+        const msgs = document.getElementById(containerId);
+        const row = document.createElement("div");
+        row.className = "chat-bubble-row assistant";
+        row.innerHTML = '<div class="chat-typing"><div class="spinner"></div> Thinking…</div>';
+        msgs.appendChild(row);
+        msgs.scrollTop = msgs.scrollHeight;
+        return row;
+      }
+
+      function buildSourcesEl(sources) {
+        const wrap = document.createElement("div");
+        wrap.className = "chat-sources";
+        if (!sources || !sources.length) {
+          wrap.innerHTML = '<span class="no-sources-note">No knowledge base context used</span>';
+          return wrap;
+        }
+        const toggle = document.createElement("button");
+        toggle.className = "chat-sources-toggle";
+        toggle.textContent = `📎 ${sources.length} source${sources.length !== 1 ? "s" : ""} used — show`;
+        const list = document.createElement("div");
+        list.className = "chat-sources-list";
+        let open = false;
+        toggle.addEventListener("click", () => {
+          open = !open;
+          list.classList.toggle("open", open);
+          toggle.textContent = `📎 ${sources.length} source${sources.length !== 1 ? "s" : ""} used — ${open ? "hide" : "show"}`;
+        });
+        for (const s of sources) {
+          const pct = Math.round(s.similarity * 100);
+          const simClass = pct >= 75 ? "sim-high" : pct >= 50 ? "sim-medium" : "sim-low";
+          const chip = document.createElement("div");
+          chip.className = "chat-source-chip";
+          chip.innerHTML = `<span>${FILE_ICONS[s.fileType] || "📄"}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.filename)}">${escHtml(s.filename)}</span><span class="similarity-badge ${simClass}" style="flex-shrink:0;">${pct}%</span>`;
+          list.appendChild(chip);
+        }
+        wrap.appendChild(toggle);
+        wrap.appendChild(list);
+        return wrap;
+      }
+
+      init();
+    </script>
+  </body>
+</html>

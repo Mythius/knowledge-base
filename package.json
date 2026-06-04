@@ -1,0 +1,35 @@
+{
+  "name": "api-lib",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "bun run index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@aws-sdk/client-s3": "^3.1060.0",
+    "@google-cloud/local-auth": "^3.0.1",
+    "@prisma/adapter-mariadb": "^7.6.0",
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
+    "@types/nodemailer": "^7.0.11",
+    "@types/pg": "^8.20.0",
+    "bullmq": "^5.78.0",
+    "googleapis": "^171.4.0",
+    "hono": "^4.12.10",
+    "ioredis": "^5.10.1",
+    "js-tiktoken": "^1.0.21",
+    "nodemailer": "^8.0.4",
+    "officeparser": "^7.1.0",
+    "pg": "^8.20.0",
+    "postgres": "^3.4.9",
+    "prisma": "^7.6.0"
+  }
+}

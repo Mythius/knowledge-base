@@ -1,0 +1,5 @@
+/node_modules
+.env
+/tools/generated
+/uploads
+/tools/googleapi/*.json
