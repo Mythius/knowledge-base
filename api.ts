@@ -19,6 +19,8 @@ export function publicRoutes(app: Hono): void {
     console.log("File upload result:", result);
     return "error" in result ? c.json(result, 400) : c.json(result, 201);
   });
+
+  setupKnowledgeChatRoutes(app, (e) => true);
 }
 
 function checkPermissions(action: string, context: Context): boolean {
@@ -40,7 +42,6 @@ export function privateRoutes(app: Hono): void {
 
   setupKnowledgeUploadRoutes(app, checkPermissions);
   setupKnowledgeCurateRoutes(app, checkPermissions);
-  setupKnowledgeChatRoutes(app, checkPermissions);
 
   exposePrismaCRUD("api", app, checkPermissions);
 }

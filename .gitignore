@@ -3,3 +3,4 @@
 /tools/generated
 /uploads
 /tools/googleapi/*.json
+# auth.json
