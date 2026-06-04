@@ -556,6 +556,7 @@
               <div class="chunks-panel-header">
                 <span id="chunksPanelIcon">📄</span>
                 <span class="chunks-panel-title" id="chunksPanelTitle">Chunks</span>
+                <button class="btn btn-danger btn-sm" id="deleteDocBtn" onclick="deleteActiveDoc()">🗑 Delete</button>
                 <button class="btn btn-ghost btn-sm" id="closeChunksBtn" onclick="closeChunks()">✕ Close</button>
               </div>
               <div class="chunks-list" id="chunksList">
@@ -776,6 +777,29 @@
         document.getElementById("chunksPanel").classList.remove("visible");
         document.querySelectorAll(".doc-item").forEach(i => i.classList.remove("active"));
         activeDocId = null;
+      }
+
+      async function deleteActiveDoc() {
+        if (!activeDocId) return;
+        const title = document.getElementById("chunksPanelTitle").textContent;
+        if (!confirm(`Delete "${title}"?\n\nThis will permanently remove the document and all its chunks.`)) return;
+
+        const btn = document.getElementById("deleteDocBtn");
+        btn.disabled = true;
+        btn.textContent = "Deleting…";
+        try {
+          const res = await fetch(`/api/knowledge/documents/${activeDocId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          if (!res.ok) throw new Error((await res.json()).error || res.statusText);
+          closeChunks();
+          loadDocuments();
+        } catch (err) {
+          alert("Delete failed: " + err.message);
+          btn.disabled = false;
+          btn.textContent = "🗑 Delete";
+        }
       }
 
       async function openChunks(doc) {

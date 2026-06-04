@@ -83,6 +83,24 @@ export function setupKnowledgeCurateRoutes(app: Hono, checkPermissions: (action:
     return c.json(updated);
   });
 
+  // Delete a document and all its chunks
+  app.delete("/api/knowledge/documents/:documentId", async (c) => {
+    if (!checkPermissions("curate", c)) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+
+    const documentId = c.req.param("documentId");
+    const db = prisma as any;
+
+    const doc = await db.knowledgeDocument.findUnique({ where: { id: documentId } });
+    if (!doc) return c.json({ error: "Document not found" }, 404);
+
+    await db.knowledgeChunk.deleteMany({ where: { documentId } });
+    await db.knowledgeDocument.delete({ where: { id: documentId } });
+
+    return c.json({ success: true });
+  });
+
   // Semantic search over all embedded chunks
   app.get("/api/knowledge/search", async (c) => {
     if (!checkPermissions("curate", c)) {
