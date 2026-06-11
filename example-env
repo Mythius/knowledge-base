@@ -5,8 +5,8 @@ CAS_SERVER_URL="https://cas.msouthwick.com"
 CAS_CLIENT_ID=default
 CAS_CALLBACK_URL="http://localhost/auth/callback/cas"
 
-EMBEDDING_PROVIDER=ollama
-AI_CHAT_PROVIDER=ollama
+EMBEDDING_PROVIDER=ollama       # "voyageai" (default) or "ollama"
+AI_CHAT_PROVIDER=ollama         # only needed when EMBEDDING_PROVIDER=ollama
 AI_CHAT_MODEL=gemma4:latest
 ANTHROPIC_API_KEY=your_anthropic_api_key 
 OLLAMA_BASE_URL=http://localhost:11434 
