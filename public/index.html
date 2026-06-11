@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Knowledge Base</title>
     <script src="api.js"></script>
+    <!-- See /endpoints/json for a list of available endpoints, most require auth, but some are public -->
     <script src="https://cdn.jsdelivr.net/npm/marked@13/marked.min.js"></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -400,10 +401,8 @@
       .chat-bubble.md a { color: var(--accent); text-decoration: underline; }
 
       /* ─── Full-page chat (regular users) ─────────────────────────── */
-      #screen-chat { display: flex; flex-direction: column; min-height: 100vh; }
-      .chat-page-body { flex: 1; display: flex; flex-direction: column; padding: 24px; max-width: 860px; width: 100%; margin: 0 auto; }
-      .chat-page-body .chat-wrap { flex: 1; height: auto; min-height: 0; }
-      .chat-page-body .chat-messages { max-height: calc(100vh - 180px); }
+      #screen-chat { display: flex; flex-direction: column; height: 100vh; }
+      #screen-chat iframe { flex: 1; border: none; width: 100%; }
 
       /* ─── Misc ───────────────────────────────────────────────────── */
       .empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
@@ -580,19 +579,7 @@
         </div>
       </div>
 
-      <div class="chat-page-body">
-        <div class="chat-wrap">
-          <div class="chat-messages" id="chatMessages">
-            <div class="chat-bubble-row assistant">
-              <div class="chat-bubble">Hi! Ask me anything — I'll search the knowledge base and answer based on what I find.</div>
-            </div>
-          </div>
-          <div class="chat-input-row">
-            <input type="text" id="chatInput" placeholder="Ask a question…" />
-            <button class="btn btn-primary btn-sm" id="chatSendBtn" style="width: auto" onclick="sendChat()">Send</button>
-          </div>
-        </div>
-      </div>
+      <iframe src="/chat.html" title="Knowledge Base Chat"></iframe>
     </div>
 
     <script>
@@ -601,7 +588,6 @@
       let selectedFile = null;
       let activeDocId = null;
       let pollTimer = null;
-      let chatHistory = [];
       let adminChatHistory = [];
 
       // ─── Init ──────────────────────────────────────────────────────
@@ -1031,101 +1017,6 @@
           document.getElementById("adminChatSendBtn").disabled = false;
           input.focus();
         }
-      }
-
-      // ─── User Chat ─────────────────────────────────────────────────
-      document.getElementById("chatInput").addEventListener("keydown", e => {
-        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
-      });
-
-      async function sendChat() {
-        const input = document.getElementById("chatInput");
-        const message = input.value.trim();
-        if (!message) return;
-        input.value = "";
-        appendChatBubble("chatMessages", "user", message);
-        const typing = appendTypingIndicator("chatMessages");
-        document.getElementById("chatSendBtn").disabled = true;
-        try {
-          const res = await fetch("/api/knowledge/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message, history: chatHistory }),
-            credentials: "include",
-          });
-          if (!res.ok) throw new Error((await res.json()).error || res.statusText);
-          const { reply, sources } = await res.json();
-          typing.remove();
-          appendChatBubble("chatMessages", "assistant", reply, sources);
-          chatHistory.push({ role: "user", content: message });
-          chatHistory.push({ role: "assistant", content: reply });
-        } catch (err) {
-          typing.remove();
-          appendChatBubble("chatMessages", "assistant", "⚠️ Error: " + err.message);
-        } finally {
-          document.getElementById("chatSendBtn").disabled = false;
-          input.focus();
-        }
-      }
-
-      // ─── Chat helpers ──────────────────────────────────────────────
-      function appendChatBubble(containerId, role, text, sources) {
-        const msgs = document.getElementById(containerId);
-        const row = document.createElement("div");
-        row.className = "chat-bubble-row " + role;
-        const bubble = document.createElement("div");
-        if (role === "assistant") {
-          bubble.className = "chat-bubble md";
-          bubble.innerHTML = marked.parse(text);
-        } else {
-          bubble.className = "chat-bubble";
-          bubble.textContent = text;
-        }
-        row.appendChild(bubble);
-        if (role === "assistant") row.appendChild(buildSourcesEl(sources));
-        msgs.appendChild(row);
-        msgs.scrollTop = msgs.scrollHeight;
-      }
-
-      function appendTypingIndicator(containerId) {
-        const msgs = document.getElementById(containerId);
-        const row = document.createElement("div");
-        row.className = "chat-bubble-row assistant";
-        row.innerHTML = '<div class="chat-typing"><div class="spinner"></div> Thinking…</div>';
-        msgs.appendChild(row);
-        msgs.scrollTop = msgs.scrollHeight;
-        return row;
-      }
-
-      function buildSourcesEl(sources) {
-        const wrap = document.createElement("div");
-        wrap.className = "chat-sources";
-        if (!sources || !sources.length) {
-          wrap.innerHTML = '<span class="no-sources-note">No knowledge base context used</span>';
-          return wrap;
-        }
-        const toggle = document.createElement("button");
-        toggle.className = "chat-sources-toggle";
-        toggle.textContent = `📎 ${sources.length} source${sources.length !== 1 ? "s" : ""} used — show`;
-        const list = document.createElement("div");
-        list.className = "chat-sources-list";
-        let open = false;
-        toggle.addEventListener("click", () => {
-          open = !open;
-          list.classList.toggle("open", open);
-          toggle.textContent = `📎 ${sources.length} source${sources.length !== 1 ? "s" : ""} used — ${open ? "hide" : "show"}`;
-        });
-        for (const s of sources) {
-          const pct = Math.round(s.similarity * 100);
-          const simClass = pct >= 75 ? "sim-high" : pct >= 50 ? "sim-medium" : "sim-low";
-          const chip = document.createElement("div");
-          chip.className = "chat-source-chip";
-          chip.innerHTML = `<span>${FILE_ICONS[s.fileType] || "📄"}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(s.filename)}">${escHtml(s.filename)}</span><span class="similarity-badge ${simClass}" style="flex-shrink:0;">${pct}%</span>`;
-          list.appendChild(chip);
-        }
-        wrap.appendChild(toggle);
-        wrap.appendChild(list);
-        return wrap;
       }
 
       init();

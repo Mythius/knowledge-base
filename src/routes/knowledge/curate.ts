@@ -101,9 +101,11 @@ export function setupKnowledgeCurateRoutes(app: Hono, checkPermissions: (action:
     return c.json({ success: true });
   });
 
-  // Semantic search over all embedded chunks
+}
+
+export function setupKnowledgeSearchRoutes(app: Hono, checkPermissions: (action: string, c: Context) => boolean): void {
   app.get("/api/knowledge/search", async (c) => {
-    if (!checkPermissions("curate", c)) {
+    if (!checkPermissions("search", c)) {
       return c.json({ error: "Unauthorized" }, 403);
     }
 
@@ -120,7 +122,6 @@ export function setupKnowledgeCurateRoutes(app: Hono, checkPermissions: (action:
       documentId: r.documentId,
       content: r.content,
       editedContent: r.editedContent,
-      metadata: r.metadata,
       similarity: r.similarity,
       filename: r.source.filename,
       fileType: r.source.fileType,

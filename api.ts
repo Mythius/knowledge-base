@@ -4,7 +4,7 @@ import { exposePrismaCRUD, prisma } from "./tools/prisma.ts";
 import { handleFileUpload } from "./tools/fileUpload.ts";
 import { AI, type ChatMessage } from "./tools/ai.ts";
 import { setupKnowledgeUploadRoutes } from "./src/routes/knowledge/upload.ts";
-import { setupKnowledgeCurateRoutes } from "./src/routes/knowledge/curate.ts";
+import { setupKnowledgeCurateRoutes, setupKnowledgeSearchRoutes } from "./src/routes/knowledge/curate.ts";
 import { setupKnowledgeChatRoutes } from "./src/routes/knowledge/chat.ts";
 
 function getSession(c: Context): Session {
@@ -20,7 +20,8 @@ export function publicRoutes(app: Hono): void {
     return "error" in result ? c.json(result, 400) : c.json(result, 201);
   });
 
-  setupKnowledgeChatRoutes(app, (e) => true);
+  setupKnowledgeChatRoutes(app, () => true);
+  setupKnowledgeSearchRoutes(app, () => true);
 }
 
 function checkPermissions(action: string, context: Context): boolean {
