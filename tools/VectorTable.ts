@@ -5,13 +5,28 @@ import { sql } from "./db.ts";
 // ── Embedding providers ────────────────────────────────────────────────────
 
 const OLLAMA_MODEL = "rjmalagon/gte-qwen2-1.5b-instruct-embed-f16";
+const OPENAI_MODEL = "text-embedding-3-small";
 const VOYAGE_MODEL = "voyage-3";
+
+async function embedOpenAI(text: string): Promise<number[]> {
+  const res = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ input: text, model: OPENAI_MODEL }),
+  });
+  if (!res.ok) throw new Error(`OpenAI embedding error ${res.status}: ${await res.text()}`);
+  const data = (await res.json()) as { data: { embedding: number[] }[] };
+  return data.data[0].embedding;
+}
 
 async function embedVoyage(text: string, inputType: "document" | "query"): Promise<number[]> {
   const res = await fetch("https://api.voyageai.com/v1/embeddings", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.ANTHROPIC_API_KEY}`,
+      Authorization: `Bearer ${process.env.VOYAGE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ input: [text], model: VOYAGE_MODEL, input_type: inputType }),
@@ -36,11 +51,12 @@ async function embedOllama(text: string): Promise<number[]> {
 export async function embedText(
   text: string,
   inputType: "document" | "query" = "document",
-  provider?: "voyageai" | "ollama",
+  provider?: "openai" | "voyageai" | "ollama",
 ): Promise<number[]> {
-  const p = provider ?? process.env.EMBEDDING_PROVIDER ?? "voyageai";
+  const p = provider ?? process.env.EMBEDDING_PROVIDER ?? "openai";
   if (p === "ollama") return embedOllama(text);
-  return embedVoyage(text, inputType);
+  if (p === "voyageai") return embedVoyage(text, inputType);
+  return embedOpenAI(text);
 }
 
 /**
@@ -82,7 +98,7 @@ export interface VectorTableOptions {
   /** Column holding the plain text that was embedded. Default: "content" */
   contentColumn?: string;
   /** Override the EMBEDDING_PROVIDER env var for this table. */
-  provider?: "voyageai" | "ollama";
+  provider?: "openai" | "voyageai" | "ollama";
   /** Table to JOIN in findDetailed (e.g. "KnowledgeDocument"). */
   sourceTable?: string;
   /**
@@ -108,7 +124,7 @@ export class VectorTable {
   readonly table: string;
   private readonly embeddingCol: string;
   private readonly contentCol: string;
-  private readonly provider?: "voyageai" | "ollama";
+  private readonly provider?: "openai" | "voyageai" | "ollama";
   private readonly sourceTable?: string;
   private readonly sourceKey?: string;
   private readonly defaultWhere: Record<string, unknown>;

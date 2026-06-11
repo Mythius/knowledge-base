@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://test:test@db:5432/test_db
+      # - DATABASE_URL=postgresql://test:test@db:5432/test_db
       - REDIS_URL=redis://redis:6379
       - REDIS_HOST=redis
       - PORT=3000
