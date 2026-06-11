@@ -16,8 +16,8 @@ services:
     ports:
       - "4006:3000"
     depends_on:
-      db:
-        condition: service_healthy
+      # db:
+      #   condition: service_healthy
       redis:
         condition: service_healthy
     restart: always
@@ -33,26 +33,25 @@ services:
       retries: 5
     restart: always
 
-  db:
-    image: pgvector/pgvector:pg17
-    container_name: postgres_test
-    environment:
-      - POSTGRES_USER=test
-      - POSTGRES_PASSWORD=test
-      - POSTGRES_DB=test_db
-    # ports:
-    #   - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U test -d test_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: always
+  # db:
+  #   image: pgvector/pgvector:pg17
+  #   container_name: postgres_test
+  #   environment:
+  #     - POSTGRES_USER=test
+  #     - POSTGRES_PASSWORD=test
+  #     - POSTGRES_DB=test_db
+  #   # ports:
+  #   #   - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U test -d test_db"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+  #   restart: always
 
 volumes:
   postgres_data:
   redis_data:
-
