@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     environment:
-      # - DATABASE_URL=postgresql://test:test@db:5432/test_db
+      - DATABASE_URL=postgresql://test:test@db:5432/test_db
       - REDIS_URL=redis://redis:6379
       - PORT=3000
       - OLLAMA_HOST=http://host-gateway:11434
@@ -15,8 +15,8 @@ services:
     ports:
       - "4006:3000"
     depends_on:
-      # db:
-      #   condition: service_healthy
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: always
