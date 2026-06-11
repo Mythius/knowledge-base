@@ -1,25 +1,25 @@
 version: '3.8'
 
 services:
-  # app:
-  #   build: .
-  #   env_file:
-  #     - .env
-  #   environment:
-  #     # - DATABASE_URL=postgresql://test:test@db:5432/test_db
-  #     - REDIS_URL=redis://redis:6379
-  #     - PORT=3000
-  #     - OLLAMA_HOST=http://host-gateway:11434
-  #   extra_hosts:
-  #     - "host-gateway:host-gateway"
-  #   ports:
-  #     - "4002:3000"
-  #   depends_on:
-  #     # db:
-  #     #   condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   restart: always
+  app:
+    build: .
+    env_file:
+      - .env
+    environment:
+      # - DATABASE_URL=postgresql://test:test@db:5432/test_db
+      - REDIS_URL=redis://redis:6379
+      - PORT=3000
+      - OLLAMA_HOST=http://host-gateway:11434
+    extra_hosts:
+      - "host-gateway:host-gateway"
+    ports:
+      - "4006:3000"
+    depends_on:
+      # db:
+      #   condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: always
 
   redis:
     image: redis:alpine
