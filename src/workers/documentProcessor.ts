@@ -132,6 +132,9 @@ async function handleEmbedChunks(data: { documentId: string }): Promise<void> {
       batch.map(async (chunk) => {
         const text = chunk.editedContent ?? chunk.content;
         const embedding = await embedText(text);
+        if (!embedding || embedding.length === 0) {
+          throw new Error(`embedText returned empty result for chunk ${chunk.id}`);
+        }
         await prisma.$executeRawUnsafe(
           `UPDATE "KnowledgeChunk" SET embedding = $1::vector WHERE id = $2`,
           `[${embedding.join(",")}]`,
@@ -143,6 +146,14 @@ async function handleEmbedChunks(data: { documentId: string }): Promise<void> {
     if (i + batchSize < chunks.length) {
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
     }
+  }
+
+  const [{ count }] = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) AS count FROM "KnowledgeChunk"
+    WHERE "documentId" = ${documentId} AND enabled = true AND embedding IS NULL
+  `;
+  if (count > 0n) {
+    throw new Error(`Embedding incomplete: ${count} chunk(s) still have null embedding for document ${documentId}`);
   }
 
   console.log(`[embed] ${documentId} — all chunks embedded`);
@@ -167,11 +178,19 @@ export function startWorker(): Worker {
           console.warn(`[worker] unknown job name: ${job.name}`);
         }
       } catch (err) {
-        console.error(`[worker] job "${job.name}" ${job.id} threw:`, err);
+        const message = err instanceof Error ? err.message : String(err);
+        const hint = /401/.test(message)
+          ? " (check API key)"
+          : /429/.test(message)
+          ? " (quota exceeded — check billing)"
+          : /ECONNREFUSED/.test(message)
+          ? " (service unreachable)"
+          : "";
+        console.error(`[worker] job "${job.name}" ${job.id} FAILED: ${message}${hint}`);
         if (documentId) {
           const db = prisma as any;
           await db.knowledgeDocument
-            .update({ where: { id: documentId }, data: { status: "FAILED" } })
+            .update({ where: { id: documentId }, data: { status: "FAILED", errorMessage: `${message}${hint}` } })
             .catch((dbErr: unknown) => console.error(`[worker] failed to mark document FAILED:`, dbErr));
         }
         throw err;

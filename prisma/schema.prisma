@@ -40,8 +40,9 @@ model KnowledgeDocument {
   fileType   FileType
   storageUrl String
   rawText    String?
-  status     DocumentStatus   @default(PENDING)
-  chunks     KnowledgeChunk[]
+  status       DocumentStatus   @default(PENDING)
+  errorMessage String?
+  chunks       KnowledgeChunk[]
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 }

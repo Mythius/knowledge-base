@@ -83,6 +83,22 @@ export function setupKnowledgeCurateRoutes(app: Hono, checkPermissions: (action:
     return c.json(updated);
   });
 
+  // Re-queue embedding for a document
+  app.post("/api/knowledge/documents/:documentId/embed", async (c) => {
+    if (!checkPermissions("curate", c)) {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+
+    const documentId = c.req.param("documentId");
+    const db = prisma as any;
+
+    const doc = await db.knowledgeDocument.findUnique({ where: { id: documentId } });
+    if (!doc) return c.json({ error: "Document not found" }, 404);
+
+    await docQueue.add("embed-chunks", { documentId });
+    return c.json({ queued: true });
+  });
+
   // Delete a document and all its chunks
   app.delete("/api/knowledge/documents/:documentId", async (c) => {
     if (!checkPermissions("curate", c)) {

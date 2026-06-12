@@ -985,6 +985,65 @@
       }
 
       // ─── Admin Chat ────────────────────────────────────────────────
+      function appendChatBubble(containerId, role, text, sources) {
+        const container = document.getElementById(containerId);
+        const row = document.createElement("div");
+        row.className = `chat-bubble-row ${role}`;
+
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble" + (role === "assistant" ? " md" : "");
+        if (role === "assistant") {
+          bubble.innerHTML = marked.parse(text);
+        } else {
+          bubble.textContent = text;
+        }
+        row.appendChild(bubble);
+
+        if (role === "assistant") {
+          const sourcesEl = document.createElement("div");
+          sourcesEl.className = "chat-sources";
+          if (sources && sources.length > 0) {
+            const toggle = document.createElement("button");
+            toggle.className = "chat-sources-toggle";
+            toggle.textContent = `${sources.length} source${sources.length > 1 ? "s" : ""}`;
+            const list = document.createElement("div");
+            list.className = "chat-sources-list";
+            sources.forEach(s => {
+              const chip = document.createElement("div");
+              chip.className = "chat-source-chip";
+              chip.textContent = s.filename || s.documentId;
+              list.appendChild(chip);
+            });
+            toggle.addEventListener("click", () => list.classList.toggle("open"));
+            sourcesEl.appendChild(toggle);
+            sourcesEl.appendChild(list);
+          } else {
+            const note = document.createElement("span");
+            note.className = "no-sources-note";
+            note.textContent = "No sources found";
+            sourcesEl.appendChild(note);
+          }
+          row.appendChild(sourcesEl);
+        }
+
+        container.appendChild(row);
+        container.scrollTop = container.scrollHeight;
+        return row;
+      }
+
+      function appendTypingIndicator(containerId) {
+        const container = document.getElementById(containerId);
+        const row = document.createElement("div");
+        row.className = "chat-bubble-row assistant";
+        const indicator = document.createElement("div");
+        indicator.className = "chat-typing";
+        indicator.textContent = "Thinking…";
+        row.appendChild(indicator);
+        container.appendChild(row);
+        container.scrollTop = container.scrollHeight;
+        return row;
+      }
+
       document.getElementById("adminChatInput").addEventListener("keydown", e => {
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAdminChat(); }
       });
