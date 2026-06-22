@@ -26,7 +26,7 @@ import { readFileSync } from "fs";
   }
 })();
 
-export type AIProvider = "Ollama" | "OpenAI" | "Anthropic";
+export type AIProvider = "Ollama" | "OpenAI" | "Anthropic" | "Gemini";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
@@ -72,6 +72,8 @@ export class AI {
         return this.callOpenAI(messages);
       case "Anthropic":
         return this.callAnthropic(messages);
+      case "Gemini":
+        return this.callGemini(messages);
       default:
         throw new Error(`Unknown provider: ${this.provider}`);
     }
@@ -132,5 +134,33 @@ export class AI {
       throw new Error(`Anthropic error ${res.status}: ${await res.text()}`);
     const json = (await res.json()) as { content: { text: string }[] };
     return json.content[0].text;
+  }
+
+  private async callGemini(messages: ChatMessage[]): Promise<string> {
+    const apiKey = process.env.GEMINI_API_KEY || "";
+    const system = messages.find((m) => m.role === "system")?.content;
+    const contents = messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+
+    const body: Record<string, unknown> = { contents };
+    if (system)
+      body.system_instruction = { parts: [{ text: system }] };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok)
+      throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
+    const json = (await res.json()) as {
+      candidates: { content: { parts: { text: string }[] } }[];
+    };
+    return json.candidates[0].content.parts[0].text;
   }
 }
