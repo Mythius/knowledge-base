@@ -50,6 +50,7 @@ enum FundingStatus {
 enum DocProvenance {
   ORG_SUBMITTED
   CG_INTERNAL
+  REFERENCE_MATERIAL
 }
 
 // Bucketed cause for a FAILED document, derived from errorMessage. Null = not failed,
