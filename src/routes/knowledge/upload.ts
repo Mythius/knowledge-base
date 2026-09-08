@@ -4,6 +4,7 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Queue } from "bullmq";
 import { prisma } from "../../../tools/prisma.ts";
 import { writeFileToDisk } from "../../../tools/fileUpload.ts";
+import { deriveDocumentMetadata } from "../../../tools/documentMetadata.ts";
 
 let _s3: S3Client | null = null;
 function getS3(): S3Client {
@@ -86,6 +87,13 @@ export function setupKnowledgeUploadRoutes(app: Hono, checkPermissions: (action:
       return c.json({ error: "File upload to storage failed" }, 500);
     }
 
+    // No org/year folder convention for web uploads, so no org index to match against —
+    // the deriver still gets useful category/language/isTemplate signal from the filename.
+    const meta = deriveDocumentMetadata(
+      { storageUrl, filename: file.name, status: "PENDING", errorMessage: null },
+      { orgs: [] },
+    );
+
     const db = prisma as any;
     const doc = await db.knowledgeDocument.create({
       data: {
@@ -93,6 +101,12 @@ export function setupKnowledgeUploadRoutes(app: Hono, checkPermissions: (action:
         fileType,
         storageUrl,
         status: "PENDING",
+        documentYear: meta.documentYear,
+        documentDate: meta.documentDate,
+        category: meta.category,
+        language: meta.language,
+        isTemplate: meta.isTemplate,
+        containsPii: meta.containsPii,
       },
     });
 

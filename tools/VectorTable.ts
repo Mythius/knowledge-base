@@ -177,7 +177,7 @@ export class VectorTable {
    * Source row is returned under `.source` to avoid column-name collisions.
    *
    * @example
-   * const hits = await kb.findDetailed<ChunkRow, DocRow>(q, { where: { orgId } });
+   * const hits = await kb.findDetailed<ChunkRow, DocRow>(q, { where: { enabled: true } });
    * hits[0].content      // from main table
    * hits[0].source.filename  // from sourceTable
    */
@@ -209,7 +209,7 @@ export class VectorTable {
 
   /**
    * Embed a single piece of text and insert it as one row.
-   * Pass extra column values via `data` (e.g. `{ orgId: 1, chunkIndex: 0 }`).
+   * Pass extra column values via `data` (e.g. `{ documentId: "abc", chunkIndex: 0 }`).
    */
   async insert(text: string, data: Record<string, unknown> = {}): Promise<void> {
     const vec = await this.toVec(text, "document");
@@ -226,7 +226,7 @@ export class VectorTable {
 
   /**
    * Split `text` into overlapping chunks, embed each, and insert all rows.
-   * Pass shared column values via `data` (e.g. `{ orgId: 1, documentId: "abc" }`).
+   * Pass shared column values via `data` (e.g. `{ documentId: "abc" }`).
    */
   async addSource(text: string, data: Record<string, unknown> = {}): Promise<void> {
     const chunks = chunkText(text, this.chunkSize, this.chunkOverlap);

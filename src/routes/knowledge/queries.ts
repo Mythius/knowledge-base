@@ -4,7 +4,7 @@ export type KnowledgeDocSource = {
   id: string;
   filename: string;
   fileType: string;
-  orgId: number;
+  orgGovId: string | null;
   status: string;
 };
 
@@ -14,7 +14,6 @@ export type KnowledgeChunkRow = {
   content: string;
   editedContent: string | null;
   metadata: unknown;
-  orgId: number;
   enabled: boolean;
   chunkIndex: number;
 };

@@ -1,8 +1,9 @@
 import { Worker, Queue } from "bullmq";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { unlink, writeFile } from "node:fs/promises";
 import { prisma } from "../../tools/prisma.ts";
 import { embedText, chunkText } from "../../tools/VectorTable.ts";
+import { extractText } from "../../tools/textExtract.ts";
+import { classifyProcessingIssue } from "../../tools/documentMetadata.ts";
 
 const redisConnection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -40,35 +41,18 @@ async function fetchFile(storageUrl: string): Promise<Buffer> {
   return Buffer.from(await new Response(Body as ReadableStream).arrayBuffer());
 }
 
-
-async function extractText(buffer: Buffer, fileType: string): Promise<string> {
-  if (fileType === "MD") {
-    return buffer.toString("utf-8");
-  }
-
-  // Write to tmp file with correct extension so officeparser detects the format reliably
-  const tmpPath = `/tmp/${crypto.randomUUID()}.${fileType.toLowerCase()}`;
-  await writeFile(tmpPath, buffer);
-  try {
-    const officeparser = await import("officeparser");
-    return (await (await officeparser.default.parseOffice(tmpPath)).to("text")).value as string;
-  } finally {
-    await unlink(tmpPath).catch(() => {});
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Job handlers
 // ---------------------------------------------------------------------------
 
-async function handleExtract(data: { documentId: string; orgId: number }): Promise<void> {
+async function handleExtract(data: { documentId: string }): Promise<void> {
   const { documentId } = data;
   const db = prisma as any;
 
   const doc = await db.knowledgeDocument.findUnique({ where: { id: documentId } });
   if (!doc) throw new Error(`Document not found: ${documentId}`);
 
-  console.log(`[extract] ${documentId} — "${doc.filename}" (${doc.fileType}, org ${doc.orgId})`);
+  console.log(`[extract] ${documentId} — "${doc.filename}" (${doc.fileType})`);
   console.log(`[extract] storage: ${doc.storageUrl}`);
 
   await db.knowledgeDocument.update({ where: { id: documentId }, data: { status: "EXTRACTING" } });
@@ -92,7 +76,6 @@ async function handleExtract(data: { documentId: string; orgId: number }): Promi
   await db.knowledgeChunk.createMany({
     data: textChunks.map((content, index) => ({
       documentId,
-      orgId: doc.orgId,
       chunkIndex: index,
       content,
     })),
@@ -171,7 +154,7 @@ export function startWorker(): Worker {
       console.log(`[worker] job "${job.name}" ${job.id} received`, job.data);
       try {
         if (job.name === "extract") {
-          await handleExtract(job.data as { documentId: string; orgId: number });
+          await handleExtract(job.data as { documentId: string });
         } else if (job.name === "embed-chunks") {
           await handleEmbedChunks(job.data as { documentId: string });
         } else {
@@ -189,8 +172,12 @@ export function startWorker(): Worker {
         console.error(`[worker] job "${job.name}" ${job.id} FAILED: ${message}${hint}`);
         if (documentId) {
           const db = prisma as any;
+          const fullMessage = `${message}${hint}`;
           await db.knowledgeDocument
-            .update({ where: { id: documentId }, data: { status: "FAILED", errorMessage: `${message}${hint}` } })
+            .update({
+              where: { id: documentId },
+              data: { status: "FAILED", errorMessage: fullMessage, processingIssue: classifyProcessingIssue("FAILED", fullMessage) },
+            })
             .catch((dbErr: unknown) => console.error(`[worker] failed to mark document FAILED:`, dbErr));
         }
         throw err;

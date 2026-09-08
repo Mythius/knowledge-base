@@ -8,11 +8,11 @@ datasource db {
 }
 
 model User {
-  id             Int           @id @default(autoincrement())
-  name           String
-  email          String        @unique
-  role           String
-  createdAt      DateTime      @default(now())
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  role      String
+  createdAt DateTime @default(now())
 }
 
 // ---------------------------------------------------------------------------
@@ -24,6 +24,7 @@ enum FileType {
   DOCX
   PPTX
   MD
+  VIDEO
 }
 
 enum DocumentStatus {
@@ -34,17 +35,85 @@ enum DocumentStatus {
   FAILED
 }
 
+// Relationship to CG Charitable's grant program, derived from the source folder/filename
+// (see tools/documentMetadata.ts). Null means "not a grant-org document" (e.g. trip media)
+// or "not yet determined" for pre-backfill rows.
+enum FundingStatus {
+  CURRENT
+  DEFUNDED_POTENTIAL
+  DEFUNDED_UNLIKELY
+}
+
+// Who produced the document, not who it's about. A national exam paper reused as a
+// sample assessment is REFERENCE_MATERIAL even though it lives in an org's folder — it
+// wasn't authored by that org and shouldn't be cited as their own claim/report.
+enum DocProvenance {
+  ORG_SUBMITTED
+  CG_INTERNAL
+}
+
+// Bucketed cause for a FAILED document, derived from errorMessage. Null = not failed,
+// or failed for a reason that doesn't fit a known bucket yet.
+enum ProcessingIssue {
+  NEEDS_OCR
+  NEEDS_PASSWORD
+  NEEDS_MANUAL_FIX
+  TRANSIENT_RETRY
+}
+
 model KnowledgeDocument {
-  id         String           @id @default(uuid())
-  filename   String
-  fileType   FileType
-  storageUrl String
-  rawText    String?
+  id           String           @id @default(uuid())
+  filename     String
+  fileType     FileType
+  storageUrl   String
+  cgInternal   Boolean          @default(true)
+  rawText      String?
   status       DocumentStatus   @default(PENDING)
   errorMessage String?
   chunks       KnowledgeChunk[]
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  // ---------------------------------------------------------------------------
+  // Searchability metadata — populated at ingestion time (see tools/documentMetadata.ts)
+  // and backfilled for pre-existing rows by scripts/backfillDocumentMetadata.ts. All
+  // nullable/defaulted so absence just means "not determined," never "not applicable."
+  // ---------------------------------------------------------------------------
+
+  /** EIN/governmentId matching cg_data_requests' Organization.govId, when resolved. */
+  orgGovId String?
+  /** Canonical org name when orgGovId resolved; otherwise the best-effort raw folder name. */
+  orgName  String?
+
+  fundingStatus FundingStatus?
+
+  /** Best-effort year the document covers (report/fiscal/filing year) — NOT ingestion date. */
+  documentYear Int?
+  /** Precise covered date, when derivable (e.g. a YYMMDD-prefixed internal memo filename). */
+  documentDate DateTime? @db.Date
+
+  /** Multi-value tags from a fixed vocabulary — see CATEGORY_VALUES in tools/documentMetadata.ts. */
+  category String[] @default([])
+
+  /** ISO 639-1 code (en, es, fr, rw, sw, ...) guessed from filename/content. */
+  language String?
+
+  docProvenance DocProvenance?
+
+  /** Blank/empty form or template, as opposed to a filled-in record. */
+  isTemplate Boolean @default(false)
+  /**
+   * Heuristic flag: filename/path suggests an individually-identifiable beneficiary
+   * record (a named student's assessment, application, or interview), not a general
+   * PII scanner. Treat false as "not flagged," never as a verified absence of PII.
+   */
+  containsPii Boolean @default(false)
+
+  processingIssue ProcessingIssue?
+
+  @@index([orgGovId])
+  @@index([fundingStatus])
+  @@index([category], type: Gin)
 }
 
 model KnowledgeChunk {
