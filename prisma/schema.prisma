@@ -25,6 +25,7 @@ enum FileType {
   PPTX
   MD
   VIDEO
+  EMAIL
 }
 
 enum DocumentStatus {
@@ -113,9 +114,39 @@ model KnowledgeDocument {
 
   processingIssue ProcessingIssue?
 
+  /**
+   * RFC822 Message-ID header for EMAIL documents — the real dedup fingerprint, stable
+   * across mailboxes (unlike Gmail's per-mailbox message id: the same internal email
+   * shows up in the sender's Sent and the recipient's Inbox as two different Gmail ids
+   * but one Message-ID). Falls back to a content hash when the header is missing.
+   * Null for non-email documents.
+   */
+  emailMessageId String? @unique
+
   @@index([orgGovId])
   @@index([fundingStatus])
   @@index([category], type: Gin)
+}
+
+/** Per-mailbox Gmail incremental-sync cursor for src/ingestEmails.ts. */
+model EmailSyncState {
+  mailbox      String    @id
+  historyId    String?
+  lastSyncedAt DateTime?
+}
+
+/**
+ * Hand-curated domain -> org map used to resolve an email participant to a partner org
+ * with high confidence. orgName is stored only for human auditability (cross-checked
+ * against src/datarequest.ts's getOrgs() at classification time, not trusted blindly —
+ * same trade-off KnowledgeDocument.orgName/orgGovId already makes since there's no real
+ * FK into the separate cg_data_requests database).
+ */
+model OrgEmailDomain {
+  domain    String   @id
+  govId     String
+  orgName   String
+  updatedAt DateTime @updatedAt
 }
 
 model KnowledgeChunk {

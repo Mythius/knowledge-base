@@ -197,7 +197,7 @@ const LANGUAGE_MARKERS: [string, RegExp][] = [
   ["sw", /kiswahili/i],
 ];
 
-function classifyCategories(haystack: string): Category[] {
+export function classifyCategories(haystack: string): Category[] {
   const found = new Set<Category>();
   for (const [cat, re] of CATEGORY_RULES) if (re.test(haystack)) found.add(cat);
   if (/\bmp4\b|\bmov\b|video|\bphotos?\b/i.test(haystack)) found.add("MEDIA");

@@ -1,0 +1,1272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pathmark Outcomes</title>
+  <script src="api.js"></script>
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-dk: #4f46e5;
+      --primary-bg: #eef2ff;
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --danger: #ef4444;
+      --danger-bg: #fef2f2;
+      --danger-border: #fecaca;
+      --success: #16a34a;
+      --success-bg: #f0fdf4;
+      --success-border: #bbf7d0;
+      --r: 8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+    }
+
+    /* ── Landing / Login ───────────────────────────────── */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+    }
+    .landing-left {
+      flex: 1;
+      background: linear-gradient(150deg, #312e81 0%, #4338ca 45%, #6366f1 100%);
+      display: flex;
+      flex-direction: column;
+      padding: 56px 64px;
+      color: #fff;
+      position: relative;
+      overflow: hidden;
+    }
+    .landing-left::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .landing-org {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 64px; position: relative;
+    }
+    .landing-org-name {
+      font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7);
+      letter-spacing: 0.3px;
+    }
+    .landing-org-name a { color: rgba(255,255,255,0.85); text-decoration: none; }
+    .landing-org-name a:hover { color: #fff; }
+    .landing-org-dot { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.35); }
+    .landing-hero { flex: 1; position: relative; }
+    .landing-hero h1 {
+      font-size: 42px; font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.5px; margin-bottom: 20px;
+    }
+    .landing-hero h1 span { color: #a5b4fc; }
+    .landing-hero p {
+      font-size: 16px; line-height: 1.7; color: rgba(255,255,255,0.8);
+      max-width: 480px; margin-bottom: 40px;
+    }
+    .landing-features { display: flex; flex-direction: column; gap: 16px; margin-bottom: 56px; }
+    .landing-feature {
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .landing-feature-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: rgba(255,255,255,0.12); display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    .landing-feature-text strong { display: block; font-size: 14px; color: #fff; margin-bottom: 2px; }
+    .landing-feature-text span   { font-size: 13px; color: rgba(255,255,255,0.65); line-height: 1.5; }
+    .landing-illustration {
+      position: absolute; right: -20px; bottom: 20px;
+      opacity: 0.12; pointer-events: none;
+    }
+    .landing-contact {
+      position: relative;
+      font-size: 13px; color: rgba(255,255,255,0.55);
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 20px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .landing-contact a { color: rgba(255,255,255,0.75); text-decoration: none; }
+    .landing-contact a:hover { color: #fff; }
+
+    .landing-right {
+      width: 460px;
+      flex-shrink: 0;
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+    }
+    .login-logo { font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: 4px; }
+    .login-sub  { color: var(--muted); margin-bottom: 32px; font-size: 14px; line-height: 1.5; }
+    .oauth-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 11px 16px; border-radius: var(--r);
+      border: 1px solid var(--border); background: var(--surface);
+      font-size: 14px; font-weight: 500; cursor: pointer; margin-bottom: 10px;
+      transition: background 0.12s, border-color 0.12s;
+      color: var(--text);
+    }
+    .oauth-btn:hover { background: var(--bg); border-color: #c7d2fe; }
+    .login-footer {
+      margin-top: 28px; font-size: 12px; color: var(--muted);
+      text-align: center; line-height: 1.6;
+    }
+    .login-footer a { color: var(--primary); text-decoration: none; }
+    @media (max-width: 860px) {
+      #login-screen { flex-direction: column; }
+      .landing-left { padding: 40px 32px; }
+      .landing-right { width: 100%; padding: 40px 24px; }
+      .landing-hero h1 { font-size: 30px; }
+      .landing-illustration { display: none; }
+    }
+
+    /* ── No-access screen ─────────────────────────────── */
+    #no-access-screen {
+      display: none;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+    }
+    .no-access-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px 56px;
+      max-width: 440px;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+    .no-access-icon {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: var(--primary-bg);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .no-access-card h2 {
+      font-size: 20px; font-weight: 700; margin-bottom: 10px; color: var(--text);
+    }
+    .no-access-card p {
+      font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 24px;
+    }
+    .no-access-card a { color: var(--primary); text-decoration: none; }
+    .no-access-card a:hover { text-decoration: underline; }
+
+    /* ── App shell ─────────────────────────────────────── */
+    #app { display: none; flex-direction: column; height: 100vh; }
+
+    /* Header */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 56px; padding: 0 20px;
+      display: flex; align-items: center; gap: 16px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .logo { font-size: 17px; font-weight: 800; color: var(--primary); letter-spacing: -0.3px; white-space: nowrap; }
+    .tab-nav { display: flex; gap: 2px; flex: 1; }
+    .tab-btn {
+      padding: 6px 14px; border: none; background: none; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      border-radius: 6px; transition: background 0.12s, color 0.12s;
+    }
+    .tab-btn:hover  { background: var(--bg); color: var(--text); }
+    .tab-btn.active { background: var(--primary-bg); color: var(--primary); }
+    .user-chip {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--muted); white-space: nowrap;
+    }
+
+    /* Main */
+    main { flex: 1; display: flex; overflow: hidden; }
+    .panel { display: none; flex: 1; overflow: hidden; }
+    .panel.active { display: flex; }
+
+    /* ── Shared components ─────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: var(--r);
+      font-size: 13px; font-weight: 500; cursor: pointer; border: none;
+      transition: background 0.12s, opacity 0.12s; white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary   { background: var(--primary);    color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-dk); }
+    .btn-outline   { background: none; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover:not(:disabled) { background: var(--bg); }
+    .btn-danger    { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger-border); }
+    .btn-danger:hover:not(:disabled)  { background: #fee2e2; }
+    .btn-success   { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+    .btn-success:hover:not(:disabled) { background: #dcfce7; }
+    .btn-sm   { padding: 5px 10px; font-size: 12px; }
+    .btn-icon { padding: 5px 8px; }
+    .btn-ghost { background: none; border: none; color: var(--muted); padding: 4px 6px; }
+    .btn-ghost:hover { color: var(--danger); }
+
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+    input[type=text], input[type=tel], textarea, select {
+      width: 100%; padding: 8px 11px;
+      border: 1px solid var(--border); border-radius: var(--r);
+      font-size: 14px; color: var(--text); background: var(--surface);
+      outline: none; transition: border-color 0.12s, box-shadow 0.12s;
+      font-family: inherit;
+    }
+    input[type=text]:focus, input[type=tel]:focus, textarea:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+    textarea { resize: vertical; min-height: 64px; line-height: 1.5; }
+    input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--primary); }
+
+    .field { margin-bottom: 14px; }
+    .row   { display: flex; gap: 12px; align-items: flex-end; }
+    .row .field { margin-bottom: 0; flex: 1; }
+
+    hr.div { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--primary-bg); border-top-color: var(--primary);
+      animation: spin 0.6s linear infinite; display: inline-block; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--muted); }
+
+    /* Empty state */
+    .empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty svg { opacity: 0.25; margin-bottom: 12px; }
+    .empty h3 { font-size: 15px; color: var(--text); margin-bottom: 4px; }
+    .empty p  { font-size: 13px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 999;
+      background: #1e293b; color: #fff; padding: 11px 18px;
+      border-radius: 10px; font-size: 13px; font-weight: 500;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.18s, transform 0.18s; pointer-events: none;
+    }
+    #toast.show            { opacity: 1; transform: translateY(0); }
+    #toast.toast-success   { background: var(--success); }
+    #toast.toast-error     { background: var(--danger); }
+
+    /* Badge */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+    .badge-sent { background: var(--success-bg); color: var(--success); }
+    .badge-none { background: var(--bg); color: var(--muted); }
+
+    /* ── Survey tab ────────────────────────────────────── */
+    .survey-sidebar {
+      width: 240px; background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .sidebar-hd {
+      padding: 14px 14px 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-hd-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; }
+    .survey-list { flex: 1; overflow-y: auto; padding: 6px; }
+    .survey-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 10px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; gap: 6px;
+      transition: background 0.1s;
+    }
+    .survey-item:hover           { background: var(--bg); }
+    .survey-item.active          { background: var(--primary-bg); color: var(--primary); font-weight: 500; }
+    .survey-item-name            { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .survey-item-del             { opacity: 0; font-size: 16px; line-height: 1; color: var(--muted); flex-shrink: 0; }
+    .survey-item:hover .survey-item-del { opacity: 1; }
+    .survey-item-del:hover       { color: var(--danger); }
+
+    .editor-area { flex: 1; overflow-y: auto; padding: 32px 36px; }
+    .editor-ph   { display: flex; align-items: center; justify-content: center; height: 100%; }
+    .editor-ph p { color: var(--muted); font-size: 14px; }
+    .editor-hd   { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .editor-hd h2{ font-size: 18px; font-weight: 700; }
+    .editor-body { max-width: 660px; }
+
+    /* Questions */
+    .q-list   { display: flex; flex-direction: column; gap: 10px; }
+    .q-card   {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 14px 16px;
+    }
+    .q-card:focus-within { border-color: #a5b4fc; box-shadow: 0 0 0 3px rgba(99,102,241,0.07); }
+    .q-top  { display: flex; gap: 10px; align-items: flex-start; }
+    .q-num  {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--bg); display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--muted); flex-shrink: 0; margin-top: 7px;
+    }
+    .q-fields   { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .q-row      { display: flex; gap: 8px; align-items: center; }
+    .q-text-in  { flex: 1; }
+    .q-type-sel { width: 152px; flex-shrink: 0; }
+
+    /* Options (multiple choice) */
+    .opts-wrap  { margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
+    .opts-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+    .opt-row    { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .opt-letter { font-size: 11px; font-weight: 700; color: var(--muted); width: 16px; flex-shrink: 0; }
+    .opt-row input { flex: 1; padding: 6px 10px; font-size: 13px; }
+
+    /* ── Contacts tab ──────────────────────────────────── */
+    .contacts-layout { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .contacts-top  { padding: 24px 28px 0; }
+    .contacts-top h2 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+    .contacts-top p  { color: var(--muted); margin-bottom: 18px; }
+
+    .add-contact-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 16px 20px; margin-bottom: 14px;
+    }
+
+    .send-bar {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 12px 20px;
+      display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+    }
+    .send-bar-label { font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .send-bar select { max-width: 280px; }
+    .send-count { font-size: 12px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+
+    .table-wrap { flex: 1; overflow-y: auto; }
+    .contacts-top { flex-shrink: 0; }
+    .contacts-inner { padding: 0 28px 24px; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    table { width: 100%; border-collapse: collapse; }
+    .table-frame { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+    thead { position: sticky; top: 0; }
+    th {
+      background: var(--bg); padding: 9px 16px;
+      text-align: left; font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #fafbff; }
+    .phone-cell { font-family: 'SF Mono', Consolas, monospace; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- Landing / Login -->
+<div id="login-screen">
+
+  <!-- Left: hero content -->
+  <div class="landing-left">
+    <div class="landing-org">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <rect width="28" height="28" rx="8" fill="rgba(255,255,255,0.15)"/>
+        <path d="M8 20V12l6-4 6 4v8" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M11 20v-4h6v4" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="landing-org-name">
+        A project of <a href="https://cgcharitable.org" target="_blank">CG Charitable</a>
+        <span class="landing-org-dot" style="display:inline-block;margin:0 6px;"></span>
+        pathmark.org
+      </span>
+    </div>
+
+    <div class="landing-hero">
+      <h1>Research that<br><span>reaches people</span><br>where they are.</h1>
+      <p>Pathmark partners with educational researchers and religious organizations to deliver survey-based research and grant programs directly through WhatsApp — meeting communities in the tools they already use.</p>
+
+      <div class="landing-features">
+        <div class="landing-feature">
+          <div class="landing-feature-icon">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div class="landing-feature-text">
+            <strong>Educational Research Partnerships</strong>
+            <span>We collaborate with universities and independent researchers to design, distribute, and analyze community surveys.</span>
+          </div>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-icon">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div class="landing-feature-text">
+            <strong>Religious &amp; Community Organizations</strong>
+            <span>We work alongside faith communities to support grant programs and gather outcomes data from the populations they serve.</span>
+          </div>
+        </div>
+        <div class="landing-feature">
+          <div class="landing-feature-icon">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="1.8" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+            </svg>
+          </div>
+          <div class="landing-feature-text">
+            <strong>Grants &amp; Impact Measurement</strong>
+            <span>CG Charitable funds charitable initiatives and uses Pathmark to measure outcomes and report on program effectiveness.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Background illustration -->
+      <svg class="landing-illustration" width="320" height="320" viewBox="0 0 320 320" fill="none">
+        <circle cx="160" cy="160" r="140" stroke="white" stroke-width="1.5"/>
+        <circle cx="160" cy="160" r="100" stroke="white" stroke-width="1.5"/>
+        <circle cx="160" cy="160" r="60" stroke="white" stroke-width="1.5"/>
+        <circle cx="160" cy="20" r="8" fill="white"/>
+        <circle cx="280" cy="100" r="6" fill="white"/>
+        <circle cx="280" cy="220" r="6" fill="white"/>
+        <circle cx="160" cy="300" r="8" fill="white"/>
+        <circle cx="40" cy="220" r="6" fill="white"/>
+        <circle cx="40" cy="100" r="6" fill="white"/>
+        <line x1="160" y1="20" x2="280" y2="100" stroke="white" stroke-width="1"/>
+        <line x1="280" y1="100" x2="280" y2="220" stroke="white" stroke-width="1"/>
+        <line x1="280" y1="220" x2="160" y2="300" stroke="white" stroke-width="1"/>
+        <line x1="160" y1="300" x2="40" y2="220" stroke="white" stroke-width="1"/>
+        <line x1="40" y1="220" x2="40" y2="100" stroke="white" stroke-width="1"/>
+        <line x1="40" y1="100" x2="160" y2="20" stroke="white" stroke-width="1"/>
+      </svg>
+    </div>
+
+    <div class="landing-contact">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Questions or partnership inquiries:
+      <a href="mailto:matthias@cgcharitable.org">matthias@cgcharitable.org</a>
+      <span style="margin-left:auto;">
+        <a href="https://cgcharitable.org" target="_blank" style="color:rgba(255,255,255,0.45);">cgcharitable.org</a>
+      </span>
+    </div>
+  </div>
+
+  <!-- Right: login card -->
+  <div class="landing-right">
+    <div class="login-card">
+      <div class="login-logo">Pathmark</div>
+      <p class="login-sub">Sign in to manage surveys and<br>review research outcomes.</p>
+      <button class="oauth-btn" onclick="googleOAuth()">
+        <svg width="18" height="18" viewBox="0 0 48 48">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Continue with Google
+      </button>
+      <button class="oauth-btn" onclick="microsoftOAuth()">
+        <svg width="18" height="18" viewBox="0 0 21 21">
+          <rect width="10" height="10" fill="#F25022"/>
+          <rect x="11" width="10" height="10" fill="#7FBA00"/>
+          <rect y="11" width="10" height="10" fill="#00A4EF"/>
+          <rect x="11" y="11" width="10" height="10" fill="#FFB900"/>
+        </svg>
+        Continue with Microsoft
+      </button>
+      <div class="login-footer">
+        Access is restricted to authorized partners.<br>
+        Contact <a href="mailto:matthias@cgcharitable.org">matthias@cgcharitable.org</a> to request access.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- No-access -->
+<div id="no-access-screen">
+  <div class="no-access-card">
+    <div class="no-access-icon">
+      <svg width="26" height="26" fill="none" stroke="var(--primary)" stroke-width="1.8" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><circle cx="12" cy="16" r="1" fill="var(--primary)" stroke="none"/>
+      </svg>
+    </div>
+    <h2>Access Pending</h2>
+    <p>Your account has been created, but you don't have access to Pathmark yet. Please contact the administrator to have your account approved.</p>
+    <a href="mailto:matthias@cgcharitable.org">matthias@cgcharitable.org</a>
+    <div style="margin-top:24px;">
+      <button class="btn btn-outline btn-sm" onclick="handleLogout()">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <header>
+    <span class="logo">📋 Pathmark Outcomes</span>
+    <nav class="tab-nav">
+      <button class="tab-btn active" onclick="showTab('survey', this)">Survey Editor</button>
+      <button class="tab-btn"        onclick="showTab('contacts', this)">Contacts &amp; Send</button>
+      <button class="tab-btn"        onclick="showTab('responses', this)">Responses</button>
+      <a class="tab-btn" href="/knowledge-manager.html" target="_blank">Knowledge Base</a>
+    </nav>
+    <div class="user-chip">
+      <a id="demo-btn" href="/demo-whatsapp.html" target="_blank"
+         style="display:none;align-items:center;gap:6px;padding:5px 12px;border-radius:var(--r);background:#25d366;color:#fff;font-size:13px;font-weight:600;text-decoration:none;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.124.558 4.118 1.529 5.845L.057 23.817a.5.5 0 0 0 .623.626l6.054-1.48A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.686-.535-5.197-1.459l-.362-.219-3.748.916.951-3.657-.236-.375A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+        Try Demo
+      </a>
+      <span id="real-phone" style="font-size:12px;color:#555;font-family:monospace;">+1 555-633-9141</span>
+      <span id="user-name"></span>
+      <button class="btn btn-danger btn-sm" onclick="handleReset()">Reset Data</button>
+      <button class="btn btn-outline btn-sm" onclick="handleLogout()">Sign out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Survey Editor -->
+    <div id="panel-survey" class="panel active">
+      <div class="survey-sidebar">
+        <div class="sidebar-hd">
+          <span class="sidebar-hd-title">Surveys</span>
+          <button class="btn btn-primary btn-sm btn-icon" onclick="newSurvey()" title="New survey">+</button>
+        </div>
+        <div class="survey-list" id="survey-list">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <div class="editor-area">
+        <div class="editor-ph" id="editor-ph">
+          <p>← Select a survey or create a new one</p>
+        </div>
+        <div id="editor-body" style="display:none" class="editor-body">
+          <div class="editor-hd">
+            <h2>Edit Survey</h2>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="deleteSurvey()">Delete</button>
+              <button class="btn btn-outline btn-sm" id="sheet-btn" onclick="openOrCreateSheet()">Open Sheet</button>
+              <button class="btn btn-primary" onclick="saveSurvey()">Save Changes</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Title</label>
+            <input id="s-title" type="text" placeholder="e.g. Customer Satisfaction Survey" />
+          </div>
+          <div class="field">
+            <label>Opening Message <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);">— sent to contacts before the first question</span></label>
+            <textarea id="s-desc" placeholder="e.g. Hi! We'd love your feedback on your recent experience. This should only take 2 minutes." style="min-height:88px;"></textarea>
+          </div>
+
+          <hr class="div" />
+
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <span class="section-label">Questions</span>
+            <button class="btn btn-outline btn-sm" onclick="addQuestion()">+ Add question</button>
+          </div>
+          <div class="q-list" id="q-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contacts & Send -->
+    <div id="panel-contacts" class="panel">
+      <div class="contacts-layout">
+        <div class="contacts-top">
+          <h2>Contacts &amp; Send</h2>
+          <p>Manage contacts and send surveys via WhatsApp</p>
+
+          <div class="add-contact-card">
+            <div class="section-label" style="margin-bottom:12px;">Add Contact</div>
+            <div class="row">
+              <div class="field"><label>Name</label><input id="c-name" type="text" placeholder="Jane Smith" /></div>
+              <div class="field"><label>ID <span style="font-weight:400;color:var(--muted);">— optional</span></label><input id="c-id" type="text" placeholder="e.g. student ID" /></div>
+              <div class="field"><label>WhatsApp Number</label><input id="c-phone" type="tel" placeholder="+1 555 000 0000" /></div>
+              <button class="btn btn-primary" onclick="addContact()">Add</button>
+            </div>
+          </div>
+
+          <div class="send-bar">
+            <span class="send-bar-label">Send survey</span>
+            <select id="send-survey-sel" onchange="loadContacts()"></select>
+            <button class="btn btn-success" onclick="sendSurvey()">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+              Send via WhatsApp
+            </button>
+            <button class="btn btn-outline btn-sm" id="sync-contacts-btn" onclick="importContactsFromSheet()" title="Import contacts from this survey's Google Sheet">↓ Sync from Sheet</button>
+            <span class="send-count" id="send-count">0 contacts selected</span>
+          </div>
+        </div>
+
+        <div class="contacts-inner">
+          <div class="table-frame table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;"><input type="checkbox" id="chk-all" onchange="toggleAll(this)" /></th>
+                  <th>Name</th>
+                  <th>ID</th>
+                  <th>WhatsApp Number</th>
+                  <th>Surveys Sent</th>
+                  <th>Responded</th>
+                  <th style="width:72px;"></th>
+                </tr>
+              </thead>
+              <tbody id="contacts-body">
+                <tr><td colspan="5"><div class="loading"><div class="spinner"></div> Loading…</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Responses -->
+    <div id="panel-responses" class="panel">
+      <div class="contacts-layout">
+        <div class="contacts-top">
+          <h2>Responses</h2>
+          <p>All survey responses collected via WhatsApp</p>
+
+          <div class="add-contact-card" style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;">
+            <div class="field" style="margin:0;min-width:220px;">
+              <label>Survey</label>
+              <select id="resp-survey-sel" onchange="loadResponses()"></select>
+            </div>
+            <div style="flex:1;"></div>
+            <button class="btn btn-outline btn-sm" onclick="seedResponses()" id="seed-btn" style="color:var(--muted);">
+              Seed example responses
+            </button>
+            <button class="btn btn-outline" onclick="exportToSheets()" id="export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Export to Google Sheets
+            </button>
+          </div>
+        </div>
+
+        <div class="contacts-inner">
+          <div class="table-frame table-wrap">
+            <table>
+              <thead id="resp-thead">
+                <tr>
+                  <th>Name</th><th>Phone</th><th>Date</th><th>Answers</th>
+                </tr>
+              </thead>
+              <tbody id="resp-tbody">
+                <tr><td colspan="4"><div class="empty"><h3>Select a survey above</h3></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────
+let currentSurveyId = null;
+let currentSheetUrl = null;
+let surveys   = [];
+let questions = [];
+let contacts  = [];
+
+// ── Tabs ─────────────────────────────────────────────────
+function showTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'contacts') loadContacts();
+  if (name === 'responses') loadResponses();
+}
+
+// ── Toast ─────────────────────────────────────────────────
+let _toastT;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (type ? ' toast-' + type : '');
+  clearTimeout(_toastT);
+  _toastT = setTimeout(() => el.className = '', 3000);
+}
+
+// ── Auth ──────────────────────────────────────────────────
+async function handleReset() {
+  if (!confirm('Delete all responses, survey sessions, and survey sends? This cannot be undone.')) return;
+  const res = await request('/reset-data', { method: 'POST' });
+  if (res.ok) {
+    showToast('Data reset successfully');
+    await loadSurveys();
+  } else {
+    showToast('Reset failed — ' + (res.error || 'unknown error'), 'error');
+  }
+}
+
+async function handleLogout() {
+  await logout();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── Utility ───────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function getOpts(q) {
+  if (!q.options) return [];
+  return Array.isArray(q.options) ? q.options : (() => { try { return JSON.parse(q.options); } catch { return []; } })();
+}
+
+// ── Surveys ───────────────────────────────────────────────
+async function loadSurveys() {
+  surveys = await request('/api/survey');
+  if (!Array.isArray(surveys)) surveys = [];
+  renderSidebar();
+  populateSendSelect();
+}
+
+function renderSidebar() {
+  const el = document.getElementById('survey-list');
+  if (!surveys.length) {
+    el.innerHTML = '<div class="empty" style="padding:32px 16px;"><p>No surveys yet.</p></div>';
+    return;
+  }
+  el.innerHTML = surveys.map(s => `
+    <div class="survey-item ${s.id === currentSurveyId ? 'active' : ''}" onclick="selectSurvey(${s.id})">
+      <span class="survey-item-name">${esc(s.title || 'Untitled')}</span>
+      <span class="survey-item-del" onclick="event.stopPropagation();deleteSurveyById(${s.id})">×</span>
+    </div>`).join('');
+}
+
+async function selectSurvey(id) {
+  currentSurveyId = id;
+  const s = surveys.find(x => x.id === id);
+  renderSidebar();
+  document.getElementById('editor-ph').style.display   = 'none';
+  document.getElementById('editor-body').style.display = 'block';
+  document.getElementById('s-title').value = s.title       || '';
+  document.getElementById('s-desc').value  = s.description || '';
+  const [, sheetRes] = await Promise.all([
+    loadQuestions(id),
+    request('/api/surveySheet/filter', { method: 'POST', body: { surveyId: id } }),
+  ]);
+  currentSheetUrl = (Array.isArray(sheetRes) && sheetRes[0]?.url) || null;
+  updateSheetButton();
+}
+
+function updateSheetButton() {
+  const btn = document.getElementById('sheet-btn');
+  if (!btn) return;
+  btn.textContent = currentSheetUrl ? 'Open Sheet' : 'Create Sheet';
+}
+
+async function openOrCreateSheet() {
+  if (currentSheetUrl) { window.open(currentSheetUrl, '_blank'); return; }
+  if (!currentSurveyId) return;
+  const btn = document.getElementById('sheet-btn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  const res = await request('/export-responses', { method: 'POST', body: { surveyId: currentSurveyId } });
+  btn.disabled = false;
+  if (res.error) { toast(res.error, 'error'); updateSheetButton(); return; }
+  currentSheetUrl = res.url;
+  updateSheetButton();
+  window.open(res.url, '_blank');
+}
+
+async function importContactsFromSheet() {
+  const surveyId = parseInt(document.getElementById('send-survey-sel').value);
+  if (!surveyId) { toast('Select a survey first', 'error'); return; }
+  const btn = document.getElementById('sync-contacts-btn');
+  btn.disabled = true; btn.textContent = 'Syncing…';
+  const res = await request('/import-contacts-from-sheet', { method: 'POST', body: { surveyId } });
+  btn.disabled = false; btn.textContent = '↓ Sync from Sheet';
+  if (res.error) { toast(res.error, 'error'); return; }
+  toast(`Imported ${res.imported} new, updated ${res.updated} contacts`, 'success');
+  await loadContacts();
+}
+
+async function loadQuestions(sid) {
+  const res = await request('/api/question/filter', { method: 'POST', body: { surveyId: sid } });
+  questions = Array.isArray(res) ? res : [];
+  renderQuestions();
+}
+
+function renderQuestions() {
+  const el = document.getElementById('q-list');
+  if (!questions.length) {
+    el.innerHTML = '<div class="empty" style="padding:24px;"><p>No questions yet — click "Add question" above.</p></div>';
+    return;
+  }
+  el.innerHTML = questions.map((q, i) => {
+    const opts = getOpts(q);
+    return `
+      <div class="q-card" data-qid="${q.id}">
+        <div class="q-top">
+          <div class="q-num">${i + 1}</div>
+          <div class="q-fields">
+            <div class="q-row">
+              <input class="q-text-in" type="text" value="${esc(q.text)}" placeholder="Question text…" />
+              <select class="q-type-sel" onchange="changeType(${q.id}, this.value)">
+                <option value="text"      ${q.type==='text'      ?'selected':''}>Short answer</option>
+                <option value="multiline" ${q.type==='multiline' ?'selected':''}>Long answer</option>
+                <option value="rating"    ${q.type==='rating'    ?'selected':''}>Rating 1–5</option>
+                <option value="choice"    ${q.type==='choice'    ?'selected':''}>Multiple choice</option>
+              </select>
+              <button class="btn btn-ghost btn-icon" onclick="deleteQuestion(${q.id})" title="Delete question">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+            ${q.type === 'choice' ? `
+            <div class="opts-wrap">
+              <div class="opts-label">Answer choices</div>
+              <div class="opts-list">
+                ${opts.map((o, j) => `
+                  <div class="opt-row">
+                    <span class="opt-letter">${String.fromCharCode(65+j)}</span>
+                    <input type="text" class="opt-in" data-idx="${j}" value="${esc(o)}" placeholder="Option ${String.fromCharCode(65+j)}" />
+                    <button class="btn btn-ghost btn-icon btn-sm" onclick="removeOpt(${q.id},${j})">×</button>
+                  </div>`).join('')}
+              </div>
+              <button class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="addOpt(${q.id})">+ Add option</button>
+            </div>` : q.type === 'rating' ? `
+            <div style="margin-top:8px;padding-top:10px;border-top:1px dashed var(--border);">
+              <span style="font-size:12px;color:var(--muted);">Respondent will choose a score from <b>1</b> to <b>5</b></span>
+            </div>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function changeType(qid, val) {
+  questions = collectDOM();
+  const q = questions.find(x => x.id === qid);
+  if (!q) return;
+  q.type = val;
+  if (val === 'choice' && !q.options?.length) q.options = ['Option A', 'Option B'];
+  if (val !== 'choice') q.options = null;
+  renderQuestions();
+}
+
+function addOpt(qid) {
+  questions = collectDOM();
+  const q = questions.find(x => x.id === qid);
+  if (!q) return;
+  const opts = getOpts(q);
+  opts.push(`Option ${String.fromCharCode(65 + opts.length)}`);
+  q.options = opts;
+  renderQuestions();
+}
+
+function removeOpt(qid, idx) {
+  questions = collectDOM();
+  const q = questions.find(x => x.id === qid);
+  if (!q) return;
+  const opts = getOpts(q);
+  opts.splice(idx, 1);
+  q.options = opts;
+  renderQuestions();
+}
+
+function collectDOM() {
+  return questions.map(q => {
+    const card = document.querySelector(`.q-card[data-qid="${q.id}"]`);
+    if (!card) return q;
+    const text = card.querySelector('.q-text-in')?.value ?? q.text;
+    const type = card.querySelector('.q-type-sel')?.value ?? q.type;
+    let options = q.options;
+    if (type === 'choice') {
+      options = [...card.querySelectorAll('.opt-in')].map(i => i.value);
+    }
+    return { ...q, text, type, options };
+  });
+}
+
+async function newSurvey() {
+  const title = prompt('Survey title:');
+  if (!title?.trim()) return;
+  const s = await request('/api/survey', { method: 'POST', body: { title: title.trim(), description: '' } });
+  if (s.error) { toast(s.error, 'error'); return; }
+  surveys.push(s);
+  renderSidebar();
+  populateSendSelect();
+  await selectSurvey(s.id);
+  toast('Survey created', 'success');
+}
+
+async function saveSurvey() {
+  if (!currentSurveyId) return;
+  const title       = document.getElementById('s-title').value.trim();
+  const description = document.getElementById('s-desc').value.trim();
+  if (!title) { toast('Title is required', 'error'); return; }
+
+  await request(`/api/survey/${currentSurveyId}`, { method: 'PUT', body: { title, description } });
+  const s = surveys.find(x => x.id === currentSurveyId);
+  if (s) { s.title = title; s.description = description; }
+
+  const latest = collectDOM();
+  for (const q of latest) {
+    const payload = { text: q.text, type: q.type, options: q.type === 'choice' ? (q.options || []) : null };
+    await request(`/api/question/${q.id}`, { method: 'PUT', body: payload });
+  }
+  questions = latest;
+  renderSidebar();
+  populateSendSelect();
+  toast('Saved!', 'success');
+}
+
+async function addQuestion() {
+  if (!currentSurveyId) return;
+  questions = collectDOM();
+  const q = await request('/api/question', {
+    method: 'POST',
+    body: { surveyId: currentSurveyId, text: '', type: 'text' }
+  });
+  if (q.error) { toast(q.error, 'error'); return; }
+  questions.push(q);
+  renderQuestions();
+  const last = document.querySelector('.q-card:last-child .q-text-in');
+  if (last) last.focus();
+}
+
+async function deleteQuestion(id) {
+  if (!confirm('Delete this question?')) return;
+  await request(`/api/question/${id}`, { method: 'DELETE' });
+  questions = collectDOM().filter(q => q.id !== id);
+  renderQuestions();
+}
+
+async function deleteSurvey() { if (currentSurveyId) deleteSurveyById(currentSurveyId); }
+
+async function deleteSurveyById(id) {
+  if (!confirm('Delete this survey and all its questions? This cannot be undone.')) return;
+  const qs = await request('/api/question/filter', { method: 'POST', body: { surveyId: id } });
+  for (const q of (qs || [])) await request(`/api/question/${q.id}`, { method: 'DELETE' });
+  await request(`/api/survey/${id}`, { method: 'DELETE' });
+  surveys = surveys.filter(s => s.id !== id);
+  if (currentSurveyId === id) {
+    currentSurveyId = null;
+    document.getElementById('editor-ph').style.display   = 'flex';
+    document.getElementById('editor-body').style.display = 'none';
+  }
+  renderSidebar();
+  populateSendSelect();
+  toast('Survey deleted');
+}
+
+// ── Contacts ──────────────────────────────────────────────
+async function loadContacts() {
+  const surveyId = parseInt(document.getElementById('send-survey-sel').value);
+  const [bens, sends, responses] = await Promise.all([
+    request('/api/beneficiary'),
+    request('/api/surveySend'),
+    surveyId
+      ? request('/api/response/filter', { method: 'POST', body: { surveyId } })
+      : Promise.resolve([]),
+  ]);
+  const counts = {};
+  for (const s of (Array.isArray(sends) ? sends : [])) {
+    counts[s.beneficiaryId] = (counts[s.beneficiaryId] || 0) + 1;
+  }
+  const responded = new Set((Array.isArray(responses) ? responses : []).map(r => r.beneficiaryId));
+  contacts = (Array.isArray(bens) ? bens : []).map(b => ({
+    ...b,
+    sendCount: counts[b.id] || 0,
+    hasResponded: responded.has(b.id),
+  }));
+  renderContacts();
+}
+
+function renderContacts() {
+  const tbody = document.getElementById('contacts-body');
+  if (!contacts.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><h3>No contacts yet</h3><p>Add one above to get started.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = contacts.map(c => `
+    <tr>
+      <td><input type="checkbox" class="c-chk" value="${c.id}" onchange="updateCount()" /></td>
+      <td><strong>${esc(c.name)}</strong></td>
+      <td>${esc(c.externalId || '—')}</td>
+      <td class="phone-cell">${esc(c.whatsAppNumber)}</td>
+      <td>${c.sendCount > 0
+        ? `<span class="badge badge-sent">✓ ${c.sendCount} sent</span>`
+        : `<span class="badge badge-none">Not sent</span>`}</td>
+      <td>${c.hasResponded
+        ? `<span class="badge badge-sent">✓ Responded</span>`
+        : `<span class="badge badge-none">No response</span>`}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteContact(${c.id})">Remove</button></td>
+    </tr>`).join('');
+  updateCount();
+}
+
+async function addContact() {
+  const name           = document.getElementById('c-name').value.trim();
+  const externalId     = document.getElementById('c-id').value.trim() || null;
+  const whatsAppNumber = document.getElementById('c-phone').value.trim();
+  if (!name || !whatsAppNumber) { toast('Name and number are required', 'error'); return; }
+  const c = await request('/api/beneficiary', { method: 'POST', body: { name, externalId, whatsAppNumber } });
+  if (c.error) { toast(c.error, 'error'); return; }
+  c.sendCount = 0;
+  contacts.push(c);
+  document.getElementById('c-name').value  = '';
+  document.getElementById('c-id').value    = '';
+  document.getElementById('c-phone').value = '';
+  renderContacts();
+  toast('Contact added', 'success');
+}
+
+async function deleteContact(id) {
+  if (!confirm('Remove this contact?')) return;
+  await request(`/api/beneficiary/${id}`, { method: 'DELETE' });
+  contacts = contacts.filter(c => c.id !== id);
+  renderContacts();
+  toast('Contact removed');
+}
+
+function toggleAll(cb) {
+  document.querySelectorAll('.c-chk').forEach(c => c.checked = cb.checked);
+  updateCount();
+}
+
+function updateCount() {
+  const n = document.querySelectorAll('.c-chk:checked').length;
+  document.getElementById('send-count').textContent =
+    n === 0 ? 'No contacts selected' : `${n} contact${n !== 1 ? 's' : ''} selected`;
+  document.getElementById('chk-all').indeterminate =
+    n > 0 && n < contacts.length;
+}
+
+function selectedIds() {
+  return [...document.querySelectorAll('.c-chk:checked')].map(c => parseInt(c.value));
+}
+
+function populateSendSelect() {
+  const opts = !surveys.length
+    ? '<option value="">— no surveys yet —</option>'
+    : surveys.map(s => `<option value="${s.id}">${esc(s.title || 'Untitled')}</option>`).join('');
+  document.getElementById('send-survey-sel').innerHTML = opts;
+  document.getElementById('resp-survey-sel').innerHTML = opts;
+}
+
+async function sendSurvey() {
+  const surveyId      = parseInt(document.getElementById('send-survey-sel').value);
+  const beneficiaryIds = selectedIds();
+  if (!surveyId)           { toast('Select a survey first', 'error'); return; }
+  if (!beneficiaryIds.length) { toast('Select at least one contact', 'error'); return; }
+
+  const btn = document.querySelector('.btn-success');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="border-color:rgba(22,163,74,0.2);border-top-color:#16a34a;"></div> Sending…';
+
+  const res = await request('/send-survey', { method: 'POST', body: { surveyId, beneficiaryIds } });
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg> Send via WhatsApp';
+
+  if (res.error) { toast(res.error, 'error'); return; }
+  toast(`Sent to ${res.sent} contact${res.sent !== 1 ? 's' : ''}${res.failed ? ` (${res.failed} failed)` : ''}!`, 'success');
+  await loadContacts();
+}
+
+// ── Responses ─────────────────────────────────────────────
+let respQuestions = [];
+let respData      = [];
+
+async function loadResponses() {
+  const surveyId = parseInt(document.getElementById('resp-survey-sel').value);
+  if (!surveyId) return;
+
+  document.getElementById('resp-tbody').innerHTML =
+    '<tr><td colspan="99"><div class="loading"><div class="spinner"></div> Loading…</div></td></tr>';
+
+  const [qs, rs, bens] = await Promise.all([
+    request('/api/question/filter', { method: 'POST', body: { surveyId } }),
+    request('/api/response/filter', { method: 'POST', body: { surveyId } }),
+    request('/api/beneficiary'),
+  ]);
+
+  respQuestions = Array.isArray(qs) ? qs : [];
+  respData      = Array.isArray(rs) ? rs : [];
+  const benMap  = Object.fromEntries((Array.isArray(bens) ? bens : []).map(b => [b.id, b]));
+
+  // Build thead
+  const thead = document.getElementById('resp-thead');
+  thead.innerHTML = '<tr>' +
+    '<th>Name</th><th>ID</th><th>Phone</th><th>Date</th>' +
+    respQuestions.map(q => `<th style="max-width:180px;white-space:normal;">${esc(q.text)}</th>`).join('') +
+    '</tr>';
+
+  // Build tbody
+  const tbody = document.getElementById('resp-tbody');
+  if (!respData.length) {
+    const cols = 4 + respQuestions.length || 5;
+    tbody.innerHTML = `<tr><td colspan="${cols}"><div class="empty"><h3>No responses yet</h3><p>Responses will appear here once contacts reply to the survey via WhatsApp.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = respData.map(r => {
+    const b = benMap[r.beneficiaryId] || {};
+    const answers = (r.answers && typeof r.answers === 'object') ? r.answers : {};
+    const date = new Date(r.createdAt).toLocaleDateString();
+    return '<tr>' +
+      `<td><strong>${esc(b.name || '—')}</strong></td>` +
+      `<td>${esc(b.externalId || '—')}</td>` +
+      `<td class="phone-cell">${esc(b.whatsAppNumber || '—')}</td>` +
+      `<td style="white-space:nowrap;">${date}</td>` +
+      respQuestions.map(q => `<td>${esc(answers[String(q.id)] ?? '')}</td>`).join('') +
+      '</tr>';
+  }).join('');
+}
+
+async function seedResponses() {
+  const surveyId = parseInt(document.getElementById('resp-survey-sel').value);
+  if (!surveyId) { toast('Select a survey first', 'error'); return; }
+
+  const btn = document.getElementById('seed-btn');
+  btn.disabled = true; btn.textContent = 'Seeding…';
+
+  const [qs, bens] = await Promise.all([
+    request('/api/question/filter', { method: 'POST', body: { surveyId } }),
+    request('/api/beneficiary'),
+  ]);
+
+  // Create up to 3 sample contacts if none exist
+  let pool = Array.isArray(bens) ? bens : [];
+  const seedContacts = [
+    { name: 'Alice Mwangi',    whatsAppNumber: '+254700000001' },
+    { name: 'John Osei',       whatsAppNumber: '+233244000002' },
+    { name: 'Maria Rodriguez', whatsAppNumber: '+18015550003' },
+  ];
+  for (const sc of seedContacts) {
+    if (pool.length >= 3) break;
+    if (!pool.find(b => b.whatsAppNumber === sc.whatsAppNumber)) {
+      const created = await request('/api/beneficiary', { method: 'POST', body: sc });
+      if (!created.error) pool.push(created);
+    }
+  }
+
+  const textAnswers = [
+    'Very helpful and professional.',
+    'Quick response, great experience!',
+    'Satisfied overall — would use again.',
+  ];
+  const multiAnswers = [
+    'The team was responsive and resolved my issue faster than expected. Very impressed.',
+    'I had a smooth experience from start to finish. The staff were knowledgeable and kind.',
+    'Everything went well. Communication was clear and I felt informed at every step.',
+  ];
+
+  const fakeAnswer = (q, idx) => {
+    if (q.type === 'rating')    return String(Math.floor(Math.random() * 3) + 3); // 3–5
+    if (q.type === 'multiline') return multiAnswers[idx % 3];
+    if (q.type === 'choice') {
+      const opts = Array.isArray(q.options) ? q.options : [];
+      return opts[idx % Math.max(opts.length, 1)] ?? 'Option A';
+    }
+    return textAnswers[idx % 3];
+  };
+
+  const targets = pool.slice(0, 3);
+  for (let i = 0; i < targets.length; i++) {
+    const b = targets[i];
+    const answers = {};
+    (Array.isArray(qs) ? qs : []).forEach(q => { answers[String(q.id)] = fakeAnswer(q, i); });
+    await request('/api/response', {
+      method: 'POST',
+      body: { surveyId, beneficiaryId: b.id, answers },
+    });
+  }
+
+  btn.disabled = false; btn.textContent = 'Seed example responses';
+  toast(`Seeded ${targets.length} example responses`, 'success');
+  await loadResponses();
+}
+
+async function exportToSheets() {
+  const surveyId = parseInt(document.getElementById('resp-survey-sel').value);
+  if (!surveyId) { toast('Select a survey first', 'error'); return; }
+
+  const btn = document.getElementById('export-btn');
+  btn.disabled = true;
+  btn.textContent = 'Exporting…';
+
+  const res = await request('/export-responses', { method: 'POST', body: { surveyId } });
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Export to Google Sheets';
+
+  if (res.error) { toast(res.error, 'error'); return; }
+  if (surveyId === currentSurveyId && res.url) {
+    currentSheetUrl = res.url;
+    updateSheetButton();
+  }
+  toast('Sheet synced! Opening…', 'success');
+  window.open(res.url, '_blank');
+}
+
+// ── Boot ──────────────────────────────────────────────────
+async function boot() {
+  const user = await request('/user');
+  if (user.error || !user.name) {
+    document.getElementById('login-screen').style.display = 'flex';
+    return;
+  }
+  document.getElementById('login-screen').style.display = 'none';
+  if (user.db?.role === 'none') {
+    document.getElementById('no-access-screen').style.display = 'flex';
+    return;
+  }
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('user-name').textContent = user.name || user.email || '';
+  const cfg = await fetch('/demo-mode').then(r => r.json()).catch(() => ({}));
+  if (cfg.enabled) {
+    document.getElementById('demo-btn').style.display = 'inline-flex';
+    document.getElementById('real-phone').style.display = 'none';
+  }
+
+  await loadSurveys();
+
+  if (surveys.length) {
+    await selectSurvey(surveys[0].id);
+  } else {
+    // Seed a demo survey on first boot
+    const demo = await request('/api/survey', {
+      method: 'POST',
+      body: { title: 'Customer Satisfaction Survey', description: 'Help us understand how we can serve you better.' }
+    });
+    await Promise.all([
+      request('/api/question', { method: 'POST', body: { surveyId: demo.id, text: 'How satisfied are you with our service overall?', type: 'rating' } }),
+      request('/api/question', { method: 'POST', body: { surveyId: demo.id, text: 'What did you like most about your experience?', type: 'text' } }),
+      request('/api/question', { method: 'POST', body: { surveyId: demo.id, text: 'How likely are you to recommend us to a friend?', type: 'choice', options: ['Very likely', 'Likely', 'Neutral', 'Unlikely'] } }),
+      request('/api/question', { method: 'POST', body: { surveyId: demo.id, text: 'Any other comments or suggestions?', type: 'multiline' } }),
+    ]);
+    surveys = [demo];
+    renderSidebar();
+    populateSendSelect();
+    await selectSurvey(demo.id);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
