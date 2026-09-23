@@ -13,11 +13,36 @@ const docQueue = new Queue("document-processing", {
 });
 
 const PS_SCRIPT = join(import.meta.dir, "..", "tools", "chromeOcr.ps1");
+const RASTERIZE_SCRIPT = join(import.meta.dir, "..", "tools", "rasterizePdf.py");
 
 interface Stats {
   fixed: number;
   failed: number;
   skippedForGood: number;
+}
+
+// Some PDFs (seen from certain accounting-software exporters) draw every character as an
+// outlined vector shape instead of a text run or an embedded image - no /Font, no /Image,
+// nothing for either a text extractor or Chrome's on-device (image-based) OCR to find, even
+// though they render as normal-looking documents. Rendering each page to a real pixel image
+// first and rebuilding an image-only PDF gives Chrome's OCR something to actually see.
+// This also sidesteps the Egnyte/Y: file-access flakiness that caused some documents to hit
+// PERSISTENT_ACCESS_FAILURE before, since the rasterized PDF always lands on local disk.
+async function rasterizePdf(srcPath: string, dstPath: string): Promise<void> {
+  const proc = Bun.spawn(["python", RASTERIZE_SCRIPT, srcPath, dstPath], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+
+  if (exitCode !== 0) {
+    throw new Error(stderr.trim() || stdout.trim() || `rasterizePdf.py exited ${exitCode}`);
+  }
 }
 
 async function runChromeOcr(pdfPath: string, outFile: string): Promise<void> {
@@ -62,7 +87,10 @@ async function ocrOneDocument(doc: { id: string; storageUrl: string; filename: s
 
   try {
     console.log(`[ocr] ${doc.filename}`);
-    await runChromeOcr(doc.storageUrl, outFile);
+
+    const rasterizedPath = join(workDir, "rasterized.pdf");
+    await rasterizePdf(doc.storageUrl, rasterizedPath);
+    await runChromeOcr(rasterizedPath, outFile);
 
     const text = await readFile(outFile, "utf-8");
     if (!text.trim()) throw new Error("OCR produced empty text");
@@ -88,9 +116,10 @@ async function ocrOneDocument(doc: { id: string; storageUrl: string; filename: s
     console.error(`[ocr] FAILED ${doc.filename}: ${message}`);
     stats.failed++;
 
-    // Chrome couldn't open this file even from a local copy - not a transient issue,
+    // Chrome couldn't open this file even from a local copy, or the source PDF itself
+    // couldn't be rasterized (missing/empty/corrupt) - neither is a transient issue, so
     // don't leave it as NEEDS_OCR (the next batch run would just retry it forever).
-    if (message.includes("PERSISTENT_ACCESS_FAILURE")) {
+    if (message.includes("PERSISTENT_ACCESS_FAILURE") || message.includes("RASTERIZE_ERROR")) {
       await db.knowledgeDocument
         .update({ where: { id: doc.id }, data: { errorMessage: message, processingIssue: "NEEDS_MANUAL_FIX" } })
         .catch(() => {});
@@ -110,7 +139,14 @@ async function ocrOneDocument(doc: { id: string; storageUrl: string; filename: s
 async function ocrChromeBatch(limit?: number): Promise<void> {
   const db = prisma as any;
   const docs = await db.knowledgeDocument.findMany({
-    where: { fileType: "PDF", status: "FAILED", processingIssue: "NEEDS_OCR" },
+    where: {
+      fileType: "PDF",
+      status: "FAILED",
+      // Retrying NEEDS_MANUAL_FIX too: most of those were PERSISTENT_ACCESS_FAILURE from
+      // Chrome navigating straight to the Y: path, which rasterizing (a local, non-Chrome
+      // file read) sidesteps entirely - worth another shot now.
+      processingIssue: { in: ["NEEDS_OCR", "NEEDS_MANUAL_FIX"] },
+    },
     select: { id: true, storageUrl: true, filename: true },
     orderBy: { storageUrl: "asc" },
     ...(limit ? { take: limit } : {}),
