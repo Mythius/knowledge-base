@@ -1,7 +1,7 @@
 import { Queue } from "bullmq";
 import { prisma } from "../tools/prisma.ts";
 import { chunkText } from "../tools/VectorTable.ts";
-import { buildOrgIndex, deriveDocumentMetadata } from "../tools/documentMetadata.ts";
+import { buildOrgIndex, deriveDocumentMetadata, toPrismaDate } from "../tools/documentMetadata.ts";
 
 const docQueue = new Queue("document-processing", {
     connection: {
@@ -115,7 +115,7 @@ async function queueDataRequestDocs(): Promise<void> {
             orgName: meta.orgName,
             fundingStatus: meta.fundingStatus,
             documentYear: meta.documentYear,
-            documentDate: meta.documentDate,
+            documentDate: toPrismaDate(meta.documentDate),
             category: meta.category,
             language: meta.language,
             docProvenance: meta.docProvenance,

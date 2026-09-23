@@ -60,6 +60,7 @@ enum ProcessingIssue {
   NEEDS_PASSWORD
   NEEDS_MANUAL_FIX
   TRANSIENT_RETRY
+  TOO_LARGE
 }
 
 model KnowledgeDocument {

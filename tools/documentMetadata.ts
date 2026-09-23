@@ -13,7 +13,7 @@
 
 export type FundingStatus = "CURRENT" | "DEFUNDED_POTENTIAL" | "DEFUNDED_UNLIKELY";
 export type DocProvenance = "ORG_SUBMITTED" | "CG_INTERNAL" | "REFERENCE_MATERIAL";
-export type ProcessingIssue = "NEEDS_OCR" | "NEEDS_PASSWORD" | "NEEDS_MANUAL_FIX" | "TRANSIENT_RETRY";
+export type ProcessingIssue = "NEEDS_OCR" | "NEEDS_PASSWORD" | "NEEDS_MANUAL_FIX" | "TRANSIENT_RETRY" | "TOO_LARGE";
 
 /** Fixed vocabulary for `category`. Keep in sync with the MCP server's documented list. */
 export const CATEGORY_VALUES = [
@@ -239,12 +239,24 @@ const PROCESSING_ISSUE_RULES: [ProcessingIssue, RegExp][] = [
   ["NEEDS_PASSWORD", /no password given/i],
   ["NEEDS_MANUAL_FIX", /invalid zip data|is not an object|pdf file is empty/i],
   ["TRANSIENT_RETRY", /50\d\b|rate limit|econnrefused|timeout/i],
+  ["TOO_LARGE", /exceeds .*hard cap/i],
 ];
 
 export function classifyProcessingIssue(status: string, errorMessage: string | null): ProcessingIssue | null {
   if (status !== "FAILED" || !errorMessage) return null;
   for (const [issue, re] of PROCESSING_ISSUE_RULES) if (re.test(errorMessage)) return issue;
   return null;
+}
+
+/**
+ * Prisma's client (unlike raw SQL) requires a full Date/ISO-datetime for a DateTime
+ * field even when it's `@db.Date` — DerivedMetadata.documentDate is a bare "YYYY-MM-DD"
+ * string, so callers writing via `prisma.knowledgeDocument.create/update` must convert
+ * through this first. Raw-SQL callers (e.g. scripts/backfillDocumentMetadata.ts) don't
+ * need it — Postgres accepts the plain string directly.
+ */
+export function toPrismaDate(documentDate: string | null): Date | null {
+  return documentDate ? new Date(documentDate) : null;
 }
 
 // ── Main entry point ─────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import { chunkText } from "../tools/VectorTable.ts";
 import { extractText } from "../tools/textExtract.ts";
 import { transcribeVideo } from "../tools/geminiVideo.ts";
 import { compressVideo } from "../tools/videoCompress.ts";
-import { buildOrgIndex, classifyProcessingIssue, deriveDocumentMetadata, type OrgIndex } from "../tools/documentMetadata.ts";
+import { buildOrgIndex, classifyProcessingIssue, deriveDocumentMetadata, toPrismaDate, type OrgIndex } from "../tools/documentMetadata.ts";
 import { getOrgs } from "./datarequest.ts";
 
 const docQueue = new Queue("document-processing", {
@@ -36,6 +36,10 @@ const VIDEO_EXT: Record<string, string> = {
 
 const MAX_VIDEO_MB = parseInt(process.env.GEMINI_MAX_VIDEO_MB || "2000", 10);
 const COMPRESS_TARGET_MB = parseInt(process.env.GEMINI_VIDEO_COMPRESS_TARGET_MB || "1800", 10);
+// Above this, don't even attempt compression — the source file is too unwieldy to be
+// worth the transcode time. Marked FAILED/TOO_LARGE in the DB rather than skipped outright,
+// so it's visible and distinguishable from "not yet scanned."
+const HARD_CAP_MB = parseInt(process.env.GEMINI_VIDEO_HARD_CAP_MB || "10000", 10);
 
 const SKIP_DIRS = new Set(["$RECYCLE.BIN", "System Volume Information", ".git", "node_modules"]);
 
@@ -111,7 +115,7 @@ async function ingestDoc(
       orgName: meta.orgName,
       fundingStatus: meta.fundingStatus,
       documentYear: meta.documentYear,
-      documentDate: meta.documentDate,
+      documentDate: toPrismaDate(meta.documentDate),
       category: meta.category,
       language: meta.language,
       docProvenance: meta.docProvenance,
@@ -166,7 +170,7 @@ async function ingestVideo(
       orgName: meta.orgName,
       fundingStatus: meta.fundingStatus,
       documentYear: meta.documentYear,
-      documentDate: meta.documentDate,
+      documentDate: toPrismaDate(meta.documentDate),
       category: meta.category,
       language: meta.language,
       docProvenance: meta.docProvenance,
@@ -175,6 +179,15 @@ async function ingestVideo(
     },
   });
   const documentId = created.id;
+
+  if (sizeMb > HARD_CAP_MB) {
+    const message = `${sizeMb.toFixed(0)}MB exceeds hard cap of ${HARD_CAP_MB}MB — skipped, not processed`;
+    console.warn(`[ingest] ${filePath} — ${message}`);
+    await markFailed(documentId, message);
+    stats.failed++;
+    failures.push({ path: filePath, error: message });
+    return;
+  }
 
   let uploadPath = filePath;
   let uploadMime = mimeType;
