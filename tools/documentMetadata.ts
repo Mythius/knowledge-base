@@ -172,14 +172,14 @@ function parseGrantOrgPath(segments: string[]): {
 
 const CATEGORY_RULES: [Category, RegExp][] = [
   ["TAX_FILING", /\b990\b|irs form|tax return|tax filing|e-return/i],
-  ["FINANCIALS", /audit|financial statement|balance sheet|\bp&l\b|profit.{0,3}loss|income statement|statement of financial position/i],
+  ["FINANCIALS", /audit|financial statement|balance sheet|\bp&l\b|profit.{0,3}loss|income statement|statement of financial position|ledger|budget/i],
   ["GOVERNANCE_LEGAL", /bylaw|articles of incorp|constitution|501\s?\(?c\)?\s?3|certificate of registration|determination letter|conflict of interest/i],
   ["ANNUAL_REPORT", /annual report|program review|impact report|impact note/i],
   ["DATA_REQUEST", /data request/i],
-  ["ASSESSMENT_CURRICULUM", /assessment|exam|marking guide|kcse|necta|nesa|curriculum|end of term|\beot\b/i],
+  ["ASSESSMENT_CURRICULUM", /assessment|exam|marking guide|kcse|necta|nesa|curriculum|end of term|\beot\b|\bm&e\b|measurement (and|or) evaluation|\bmel\b|\boutcomes?\b/i],
   ["POLICY_HANDBOOK", /handbook|\bpolic(y|ies)\b|procedure|code of conduct|protection policy/i],
   ["MEETING_NOTES", /meeting notes|interview|minutes|notes -|notes-/i],
-  ["NEWSLETTER", /newsletter/i],
+  ["NEWSLETTER", /newsletter|\bnews\b|quarterly update|program update/i],
   ["SURVEY", /\bsurvey\b/i],
 ];
 

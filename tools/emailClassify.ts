@@ -3,7 +3,8 @@
  * so which org and topics it's tagged with. This is the privacy backstop for
  * src/ingestEmails.ts: an email is only ever persisted when it resolves to a known
  * partner org, or matches a configured topic and an LLM pass confirms it's genuinely
- * relevant. Everything else — the bulk of 5 people's inboxes — is never written to disk.
+ * relevant to a partner org's work or to CG Charitable's own finances/operations.
+ * Everything else — the bulk of 5 people's inboxes — is never written to disk.
  */
 
 import { createHash } from "crypto";
@@ -92,9 +93,11 @@ function createClassifierAI(): AI {
 
 /**
  * Ambiguous case: a topic hit but no org resolved from participants/name-matching. Asks
- * the LLM to (a) confirm this is genuinely about a partner org's work — not unrelated
- * personal use of a topic word like "my budget is tight" — and (b) attempt org
- * attribution from the known org list. Errs toward excluding on any parse failure.
+ * the LLM to (a) confirm this is genuinely about a partner org's work, or about CG
+ * Charitable's own finances/operations — not unrelated personal use of a topic word like
+ * "my budget is tight" — and (b) attempt org attribution from the known org list when
+ * it's (a) a partner org, leaving orgName null for CG's own internal content. Errs
+ * toward excluding on any parse failure.
  */
 async function llmConfirmAmbiguous(
   subject: string,
@@ -103,14 +106,14 @@ async function llmConfirmAmbiguous(
 ): Promise<{ relevant: boolean; orgName: string | null }> {
   const orgNames = orgs.map((o) => o.name).join("; ");
   const ai = createClassifierAI();
-  const prompt = `You triage internal emails for a nonprofit's knowledge base of its partner organizations.
+  const prompt = `You triage internal emails for CG Charitable's knowledge base of itself and its partner organizations.
 Known partner orgs: ${orgNames}
 
 Email subject: ${subject}
 Email body (may be truncated):
 ${body.slice(0, 3000)}
 
-Is this email substantively about one of the known partner orgs' work, finances, or programs — not just incidental use of a topic word? Reply with ONLY a JSON object, no prose: {"relevant": true|false, "orgName": "<exact name from the list, or null>"}`;
+Is this email substantively about (a) one of the known partner orgs' work, finances, or programs, or (b) CG Charitable's own internal finances or operations — not just incidental use of a topic word (e.g. "my personal budget" doesn't count)? Reply with ONLY a JSON object, no prose: {"relevant": true|false, "orgName": "<exact partner org name from the list if (a), or null if (b) or not relevant>"}`;
 
   try {
     const raw = await ai.respond([{ role: "user", content: prompt }]);

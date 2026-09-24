@@ -24,6 +24,22 @@ const MAILBOXES = (process.env.GMAIL_INGEST_MAILBOXES || "").split(",").map((s) 
 const INTERNAL_DOMAIN = (process.env.GMAIL_INGEST_DOMAIN || "").toLowerCase();
 // Bounds the very first backfill per mailbox so years of history don't take forever; override via env.
 const BACKFILL_DAYS = parseInt(process.env.GMAIL_INGEST_BACKFILL_DAYS || "730", 10);
+// How many messages within one mailbox to fetch/classify at once. Cross-mailbox races on
+// the same Message-ID (e.g. an internal email in both Sent and Inbox) are already handled
+// by the P2002 catch in ingestMessage, so this can safely be > 1.
+const CONCURRENCY = parseInt(process.env.GMAIL_INGEST_CONCURRENCY || "8", 10);
+
+/** Runs `fn` over `items` with at most `concurrency` in flight at once. */
+async function pMap<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      await fn(item);
+    }
+  });
+  await Promise.all(workers);
+}
 
 interface Stats {
   created: number;
@@ -119,11 +135,12 @@ async function ingestMessage(mailbox: string, gmailId: string, ctx: ClassifyCont
     await db.knowledgeDocument.update({ where: { id: created.id }, data: { status: "READY" } });
     await docQueue.add("embed-chunks", { documentId: created.id });
 
-    console.log(`[ingest-emails] created document for "${msg.subject}" (${classification.orgName ?? "no org"})`);
+    console.log(`[ingest-emails] ${mailbox}: created document for "${msg.subject}" (${classification.orgName ?? "no org"})`);
     stats.created++;
   } catch (err: any) {
     if (err?.code === "P2002") {
-      // Lost a race with another mailbox that ingested the same Message-ID first.
+      // Lost a race with another concurrent ingest (same mailbox or a different one) that
+      // created this Message-ID first.
       stats.skipped++;
       return;
     }
@@ -134,9 +151,9 @@ async function ingestMessage(mailbox: string, gmailId: string, ctx: ClassifyCont
 }
 
 async function processIds(mailbox: string, ids: AsyncGenerator<string>, ctx: ClassifyContext, stats: Stats): Promise<void> {
-  for await (const gmailId of ids) {
-    await ingestMessage(mailbox, gmailId, ctx, stats);
-  }
+  const gmailIds: string[] = [];
+  for await (const id of ids) gmailIds.push(id);
+  await pMap(gmailIds, CONCURRENCY, (gmailId) => ingestMessage(mailbox, gmailId, ctx, stats));
 }
 
 async function fullBackfill(mailbox: string, since: Date, ctx: ClassifyContext, stats: Stats): Promise<void> {
@@ -180,9 +197,12 @@ async function syncMailbox(mailbox: string, ctx: ClassifyContext, stats: Stats):
 }
 
 /**
- * Periodic entry point: syncs each configured mailbox in turn (sequentially — not
- * parallel, to avoid a dedup race between two mailboxes seeing the same message at once)
- * and classifies+ingests each new message. Only messages that resolve to a known partner
+ * Periodic entry point: syncs every configured mailbox concurrently, and within each
+ * mailbox classifies+ingests up to CONCURRENCY messages at once. A dedup race between two
+ * mailboxes seeing the same message (or two messages within a mailbox) is caught by the
+ * P2002 unique-constraint handler in ingestMessage rather than avoided via serialization —
+ * stats/needsReview are plain in-memory mutations, safe under async interleaving since
+ * there's no real thread-level concurrency. Only messages that resolve to a known partner
  * org, or match a configured topic and pass the LLM relevance check, are ever persisted —
  * everything else is discarded without being written to the database.
  */
@@ -194,15 +214,17 @@ async function ingestEmails(mailboxes: string[]): Promise<void> {
   const ctx = await buildClassifyContext();
   console.log(`[ingest-emails] loaded ${ctx.orgIndex.orgs.length} orgs, ${ctx.domainMap.size} domain mappings`);
 
-  for (const mailbox of mailboxes) {
-    try {
-      await syncMailbox(mailbox, ctx, stats);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`[ingest-emails] ${mailbox}: sync failed — ${message}`);
-      stats.failed++;
-    }
-  }
+  await Promise.all(
+    mailboxes.map(async (mailbox) => {
+      try {
+        await syncMailbox(mailbox, ctx, stats);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[ingest-emails] ${mailbox}: sync failed — ${message}`);
+        stats.failed++;
+      }
+    }),
+  );
 
   console.log(`\n[ingest-emails] done — created ${stats.created}, skipped ${stats.skipped}, failed ${stats.failed}`);
   if (stats.needsReview.length) {
