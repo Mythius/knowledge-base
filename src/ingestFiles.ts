@@ -16,23 +16,49 @@ const docQueue = new Queue("document-processing", {
   },
 });
 
-const DEFAULT_ROOTS = [
-  "Y:\\Shared\\CG\\04_Grant_Organizations\\1 Funded Orgs",
-  "Y:\\Shared\\CG\\02_Audio_Visual_and_Web\\Trip Media",
-  "Y:\\Shared\\CG\\05_Travel\\Trips",
-];
+type DocType = "PDF" | "DOCX" | "PPTX" | "MD" | "XLSX";
 
-const DOC_EXT: Record<string, "PDF" | "DOCX" | "PPTX" | "MD"> = {
+const DOC_EXT: Record<string, DocType> = {
   ".pdf": "PDF",
   ".docx": "DOCX",
   ".pptx": "PPTX",
   ".md": "MD",
+  ".xlsx": "XLSX",
 };
 
 const VIDEO_EXT: Record<string, string> = {
   ".mp4": "video/mp4",
   ".mov": "video/quicktime",
 };
+
+interface Root {
+  path: string;
+  /** Extensions to ingest under this root. Defaults to everything except .xlsx. */
+  exts?: string[];
+  /** Subdirectories (absolute) to skip entirely. */
+  exclude?: string[];
+}
+
+const DEFAULT_EXTS = [".pdf", ".docx", ".pptx", ".md", ...Object.keys(VIDEO_EXT)];
+
+const FINANCE = "Y:\\Shared\\CG\\00_Administrative\\2_Finance";
+// PDFs and spreadsheets only — skips Tableau workbooks, receipt photos, etc.
+const FINANCE_EXTS = [".pdf", ".xlsx"];
+
+const DEFAULT_ROOTS: Root[] = [
+  { path: "Y:\\Shared\\CG\\04_Grant_Organizations\\1 Funded Orgs" },
+  { path: "Y:\\Shared\\CG\\02_Audio_Visual_and_Web\\Trip Media" },
+  { path: "Y:\\Shared\\CG\\05_Travel\\Trips" },
+  { path: `${FINANCE}\\6_Tax\\Filings\\All_990s`, exts: FINANCE_EXTS },
+  { path: `${FINANCE}\\6_Tax\\Tax Payments`, exts: FINANCE_EXTS },
+  { path: `${FINANCE}\\7_FP&A`, exts: FINANCE_EXTS },
+  { path: `${FINANCE}\\0_GL`, exts: FINANCE_EXTS },
+  { path: `${FINANCE}\\1_Expenses`, exts: FINANCE_EXTS, exclude: [`${FINANCE}\\1_Expenses\\0ld`] },
+  { path: `${FINANCE}\\3_Financials_and_Audits`, exts: FINANCE_EXTS },
+  // Organized by year; only the last two are wanted.
+  { path: `${FINANCE}\\5_Investment_Portfolio\\2025`, exts: FINANCE_EXTS },
+  { path: `${FINANCE}\\5_Investment_Portfolio\\2026`, exts: FINANCE_EXTS },
+];
 
 const MAX_VIDEO_MB = parseInt(process.env.GEMINI_MAX_VIDEO_MB || "2000", 10);
 const COMPRESS_TARGET_MB = parseInt(process.env.GEMINI_VIDEO_COMPRESS_TARGET_MB || "1800", 10);
@@ -43,7 +69,7 @@ const HARD_CAP_MB = parseInt(process.env.GEMINI_VIDEO_HARD_CAP_MB || "10000", 10
 
 const SKIP_DIRS = new Set(["$RECYCLE.BIN", "System Volume Information", ".git", "node_modules"]);
 
-async function* walk(dir: string): AsyncGenerator<string> {
+async function* walk(dir: string, exclude: Set<string>): AsyncGenerator<string> {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
@@ -56,8 +82,8 @@ async function* walk(dir: string): AsyncGenerator<string> {
     if (entry.name.startsWith("~$") || entry.name.startsWith(".")) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
-      yield* walk(full);
+      if (SKIP_DIRS.has(entry.name) || exclude.has(full.toLowerCase())) continue;
+      yield* walk(full, exclude);
     } else if (entry.isFile()) {
       yield full;
     }
@@ -96,7 +122,7 @@ async function markFailed(documentId: string, message: string): Promise<void> {
 
 async function ingestDoc(
   filePath: string,
-  fileType: "PDF" | "DOCX" | "PPTX" | "MD",
+  fileType: DocType,
   orgIndex: OrgIndex,
   stats: IngestStats,
   failures: Failure[],
@@ -228,14 +254,14 @@ async function ingestVideo(
 }
 
 /**
- * Walk `roots`, find PDFs/DOCX/PPTX/MD files and MP4/MOV videos, and ingest each into
+ * Walk `roots`, find PDFs/DOCX/PPTX/MD/XLSX files and MP4/MOV videos (filtered per root), and ingest each into
  * the knowledge base. A file already ingested (matched by absolute path in storageUrl)
  * is skipped and never touched again on later runs, even if it previously failed —
  * this is a one-way, additive scan, not a sync. Extraction/transcription happens
  * synchronously here (not via the background worker) so failures are visible immediately;
  * only the final embedding step is queued.
  */
-async function ingestFiles(roots: string[]): Promise<void> {
+async function ingestFiles(roots: Root[]): Promise<void> {
   const db = prisma as any;
   const stats: IngestStats = { created: 0, skipped: 0, failed: 0 };
   const failures: Failure[] = [];
@@ -245,9 +271,12 @@ async function ingestFiles(roots: string[]): Promise<void> {
   console.log(`[ingest] loaded ${orgIndex.orgs.length} orgs for metadata tagging`);
 
   for (const root of roots) {
-    console.log(`[ingest] scanning ${root}`);
-    for await (const filePath of walk(root)) {
+    console.log(`[ingest] scanning ${root.path}`);
+    const exts = new Set(root.exts ?? DEFAULT_EXTS);
+    const exclude = new Set((root.exclude ?? []).map((p) => p.toLowerCase()));
+    for await (const filePath of walk(root.path, exclude)) {
       const ext = extname(filePath).toLowerCase();
+      if (!exts.has(ext)) continue;
       const docType = DOC_EXT[ext];
       const videoMime = VIDEO_EXT[ext];
       if (!docType && !videoMime) continue;
@@ -281,7 +310,7 @@ async function ingestFiles(roots: string[]): Promise<void> {
 if (import.meta.main) {
   const roots = process.argv.slice(2);
 
-  ingestFiles(roots.length ? roots : DEFAULT_ROOTS)
+  ingestFiles(roots.length ? roots.map((path) => ({ path })) : DEFAULT_ROOTS)
     .then(() => process.exit(0))
     .catch((err) => {
       console.error(err);

@@ -346,6 +346,17 @@ export function deriveDocumentMetadata(doc: DocumentInput, orgIndex: OrgIndex): 
     return base;
   }
 
+  // CG's own books (GL, expenses, 990s, audits, investments). Never about a grantee, so no
+  // org match — receipts and statements routinely mention grantee names in passing.
+  if (/00_administrative[\\/]+2_finance/i.test(doc.storageUrl)) {
+    base.docProvenance = "CG_INTERNAL";
+    if (!base.category.length) base.category = /6_tax/i.test(doc.storageUrl) ? ["TAX_FILING"] : ["FINANCIALS"];
+    base.documentYear = extractYearFromFilename(segments.find((s) => YEAR_SEGMENT_RE.test(s)) ?? doc.filename);
+    // Expense folders hold receipts and card statements.
+    if (/1_expenses/i.test(doc.storageUrl)) base.containsPii = true;
+    return base;
+  }
+
   // Unknown convention (web upload, S3 key, ...): no path signal, filename-only best effort.
   base.documentYear = extractYearFromFilename(doc.filename);
   base.language = detectLanguage(doc.filename);

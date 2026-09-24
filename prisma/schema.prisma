@@ -26,6 +26,7 @@ enum FileType {
   MD
   VIDEO
   EMAIL
+  XLSX
 }
 
 enum DocumentStatus {
