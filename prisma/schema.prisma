@@ -55,6 +55,15 @@ enum DocProvenance {
   REFERENCE_MATERIAL
 }
 
+// For EMAIL documents, relative to GMAIL_INGEST_DOMAIN (see tools/emailParse.ts):
+// INBOUND = sent from outside; OUTBOUND = sent by staff to someone outside;
+// INTERNAL = staff-to-staff only.
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+}
+
 // Bucketed cause for a FAILED document, derived from errorMessage. Null = not failed,
 // or failed for a reason that doesn't fit a known bucket yet.
 enum ProcessingIssue {
@@ -124,9 +133,30 @@ model KnowledgeDocument {
    */
   emailMessageId String? @unique
 
+  // ---------------------------------------------------------------------------
+  // Structured email fields — set at ingestion by src/ingestEmails.ts, backfilled for
+  // older rows by scripts/backfillEmailFields.ts, derived by tools/emailParse.ts. All
+  // null for non-email documents. rawText still holds the full original message.
+  // ---------------------------------------------------------------------------
+
+  /** Root Message-ID of the conversation (References/In-Reply-To) — mailbox-independent, unlike Gmail's threadId. */
+  emailThreadId  String?
+  /** Normalized subject (Re:/Fwd: stripped, lowercased) — thread grouping fallback when emailThreadId is null. */
+  emailThreadKey String?
+  emailFrom      String?
+  emailTo        String?
+  emailCc        String?
+  /** Full send timestamp (documentDate is day-only) — orders messages within a thread. */
+  emailSentAt    DateTime?
+  emailDirection EmailDirection?
+  /** Only the text new in this message: quoted reply history, ">" lines and signatures removed. */
+  emailBody      String?
+
   @@index([orgGovId])
   @@index([fundingStatus])
   @@index([category], type: Gin)
+  @@index([orgGovId, emailSentAt])
+  @@index([emailThreadId])
 }
 
 /** Per-mailbox Gmail incremental-sync cursor for src/ingestEmails.ts. */
@@ -159,6 +189,16 @@ model KnowledgeChunk {
   editedContent String?
   enabled       Boolean                      @default(true)
   embedding     Unsupported("vector(1536)")?
+  /**
+   * Full-text index over coalesce(editedContent, content). Maintained by the
+   * KnowledgeChunk_searchVector_trg trigger (prisma/migrations/add_email_structure) —
+   * never write it from application code. Declared here so `prisma db push` keeps the
+   * column and its GIN index instead of dropping them as drift.
+   */
+  searchVector  Unsupported("tsvector")?
   metadata      Json?
   createdAt     DateTime                     @default(now())
+
+  @@index([documentId])
+  @@index([searchVector], type: Gin)
 }

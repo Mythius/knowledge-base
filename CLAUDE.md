@@ -35,6 +35,8 @@ Routes are registered in [api.ts](api.ts) via `publicRoutes()` and `privateRoute
 - Client output: `tools/generated/prisma` — import from `tools/prisma.ts` which exports `prisma`
 - New models with FKs to `Organization` must add back-relations to that model or store `orgId` as a plain `Int` without a Prisma relation (current approach for knowledge models)
 - Raw SQL (pgvector, etc.) goes in `prisma/migrations/` and is applied manually with psql at `/opt/homebrew/Cellar/libpq/18.4/bin/psql`
+- **Declare every index in schema.prisma**, even ones a raw-SQL migration creates (use `Unsupported(...)` fields + `@@index(..., type: Gin)` where needed). `entrypoint.sh` runs `prisma db push` on every container start, which drops indexes/columns that exist only in raw SQL — that's why the HNSW index from `add_vector_embedding` and the GIN index from `add_document_metadata` are missing in production. Triggers and functions are invisible to Prisma and survive db push.
+- Because of that same startup `db push`, deploy schema changes **before** applying their raw-SQL migration: new columns added to the DB ahead of the code that declares them look like drift to the old container's db push, which then refuses (data loss) and exits under `set -e`.
 
 ## Auth Pattern
 

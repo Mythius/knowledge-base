@@ -3,6 +3,7 @@ import { prisma } from "../tools/prisma.ts";
 import { chunkText } from "../tools/VectorTable.ts";
 import { getOrgs } from "./datarequest.ts";
 import { buildOrgIndex, classifyEmail, fallbackFingerprint, isNoiseMessage, type ClassifyContext } from "../tools/emailClassify.ts";
+import { deriveEmailFields } from "../tools/emailParse.ts";
 import {
   getCurrentHistoryId,
   getMessageFull,
@@ -113,6 +114,7 @@ async function ingestMessage(mailbox: string, gmailId: string, ctx: ClassifyCont
     }
 
     const rawText = formatRawText(msg);
+    const emailFields = deriveEmailFields(msg, INTERNAL_DOMAIN);
 
     const created = await db.knowledgeDocument.create({
       data: {
@@ -128,6 +130,7 @@ async function ingestMessage(mailbox: string, gmailId: string, ctx: ClassifyCont
         category: classification.categories,
         language: "en",
         docProvenance: classification.docProvenance,
+        ...emailFields,
       },
     });
 

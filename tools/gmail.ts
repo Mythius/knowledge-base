@@ -51,6 +51,8 @@ function gmailClientFor(mailbox: string): gmail_v1.Gmail {
 export interface ParsedMessage {
   gmailId: string;
   messageId: string | null; // RFC822 Message-ID header
+  inReplyTo: string | null; // RFC822 In-Reply-To header
+  references: string | null; // RFC822 References header (space-separated Message-IDs, root first)
   from: string;
   to: string;
   cc: string;
@@ -119,6 +121,8 @@ function parseMessage(msg: gmail_v1.Schema$Message): ParsedMessage {
   return {
     gmailId: msg.id!,
     messageId: header(headers, "Message-ID"),
+    inReplyTo: header(headers, "In-Reply-To"),
+    references: header(headers, "References"),
     from: decodeHeaderValue(header(headers, "From")),
     to: decodeHeaderValue(header(headers, "To")),
     cc: decodeHeaderValue(header(headers, "Cc")),
@@ -136,7 +140,10 @@ export async function getMessageMetadata(mailbox: string, gmailId: string): Prom
     userId: "me",
     id: gmailId,
     format: "metadata",
-    metadataHeaders: ["From", "To", "Cc", "Subject", "Date", "Message-ID", "List-Id", "List-Unsubscribe", "Precedence"],
+    metadataHeaders: [
+      "From", "To", "Cc", "Subject", "Date", "Message-ID", "In-Reply-To", "References",
+      "List-Id", "List-Unsubscribe", "Precedence",
+    ],
   });
   return res.data;
 }
