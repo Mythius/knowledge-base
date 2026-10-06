@@ -147,6 +147,12 @@ async function ingestMessage(mailbox: string, gmailId: string, ctx: ClassifyCont
       stats.skipped++;
       return;
     }
+    if (err?.response?.status === 404 || err?.code === 404) {
+      // history.list reports every messageAdded event, including messages deleted since —
+      // mostly draft autosaves, which Gmail replaces on each save. Nothing to ingest.
+      stats.skipped++;
+      return;
+    }
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[ingest-emails] FAILED on ${mailbox}/${gmailId}: ${message}`);
     stats.failed++;
