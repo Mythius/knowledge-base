@@ -136,6 +136,40 @@ export async function downloadFile(fileId: string, name: string): Promise<string
   });
 }
 
+/** Pull the file id out of a Google Docs/Drive URL, or return the input if it's already a bare id. */
+export function parseGoogleFileId(urlOrId: string): string {
+  const match = urlOrId.match(/\/d\/([a-zA-Z0-9_-]+)/) ?? urlOrId.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+  if (/^[a-zA-Z0-9_-]+$/.test(urlOrId)) return urlOrId;
+  throw new Error(`Not a Google file URL or id: ${urlOrId}`);
+}
+
+/** Export a Google Doc as Markdown (falls back to plain text), along with its title. */
+export async function exportGoogleDoc(
+  urlOrId: string
+): Promise<{ fileId: string; name: string; modifiedTime: string | null; text: string }> {
+  const auth = await login();
+  if (!auth) throw new Error("Google API not authorized. Run: bun run tools/googleapi/index.ts del");
+  const drive = google.drive({ version: "v3", auth });
+  const fileId = parseGoogleFileId(urlOrId);
+
+  const meta = await drive.files.get({ fileId, fields: "name, mimeType, modifiedTime", supportsAllDrives: true });
+  if (meta.data.mimeType !== "application/vnd.google-apps.document") {
+    throw new Error(`${fileId} is ${meta.data.mimeType}, not a Google Doc`);
+  }
+
+  let text: string;
+  try {
+    const res = await drive.files.export({ fileId, mimeType: "text/markdown" }, { responseType: "text" });
+    text = String(res.data);
+  } catch {
+    const res = await drive.files.export({ fileId, mimeType: "text/plain" }, { responseType: "text" });
+    text = String(res.data);
+  }
+
+  return { fileId, name: meta.data.name ?? fileId, modifiedTime: meta.data.modifiedTime ?? null, text };
+}
+
 async function applySheetFormatting(sheets: any, spreadsheetId: string, data: string[][]): Promise<void> {
   if (!data.length) return;
   await sheets.spreadsheets.values.update({

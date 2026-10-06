@@ -29,6 +29,8 @@ export const CATEGORY_VALUES = [
   "NEWSLETTER",
   "SURVEY",
   "CORRESPONDENCE",
+  /** CG staff's per-org review notes on a data-request cycle (the "FY20xx Org Notes" Google Docs). */
+  "CG_REVIEW_NOTES",
 ] as const;
 export type Category = (typeof CATEGORY_VALUES)[number];
 
@@ -63,6 +65,19 @@ export interface DerivedMetadata {
  */
 const ORG_ALIASES: Record<string, string> = {
   "villiage schools": "village schools",
+  // Rebrands and the short names staff use for folders (Trip Media) and notes headings.
+  remade: "made in streets",
+  mits: "made in streets",
+  vsi: "village schools",
+  b2r: "bridge2rwanda",
+  gtf: "guatemalan tomorrow",
+  sega: "nurturing minds",
+  kcf: "kenya children s",
+  "kcf kds": "kenya children s",
+  rsp: "rwanda school",
+  "rsp rls": "rwanda school",
+  "daisy school efg": "education for generations",
+  "byu ballard center": "1 church byu",
 };
 
 const ORG_STOPWORDS = new Set([
@@ -70,7 +85,7 @@ const ORG_STOPWORDS = new Set([
   "fund", "project", "organization", "org", "ltd", "limited", "of", "and",
 ]);
 
-function normalizeWords(name: string): string {
+export function normalizeWords(name: string): string {
   const words = name
     .toLowerCase()
     .normalize("NFD")
@@ -80,6 +95,11 @@ function normalizeWords(name: string): string {
     .split(/\s+/)
     .filter((w) => w && !ORG_STOPWORDS.has(w));
   return words.join(" ");
+}
+
+/** Applies ORG_ALIASES to an already-normalized name. */
+export function aliasOrg(normalized: string): string {
+  return ORG_ALIASES[normalized] ?? normalized;
 }
 
 function compact(normalized: string): string {
@@ -105,9 +125,8 @@ export function buildOrgIndex(orgs: OrgRef[]): OrgIndex {
  * PII-flagged document is worse than a missing one.
  */
 export function matchOrg(rawLabel: string, index: OrgIndex): OrgRef | null {
-  let normalized = normalizeWords(rawLabel);
+  const normalized = aliasOrg(normalizeWords(rawLabel));
   if (!normalized) return null;
-  normalized = ORG_ALIASES[normalized] ?? normalized;
   const compacted = compact(normalized);
 
   const exact = index.orgs.find((o) => o.normalized === normalized || o.compact === compacted);

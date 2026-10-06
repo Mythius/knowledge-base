@@ -15,6 +15,11 @@
  *   bun scripts/backfillDocumentMetadata.ts --apply       # writes the changes
  *   bun scripts/backfillDocumentMetadata.ts --apply --force
  *   bun scripts/backfillDocumentMetadata.ts --limit 50    # try it on a subset first
+ *   bun scripts/backfillDocumentMetadata.ts --link-only [--apply]
+ *
+ * --link-only re-runs just the org match (e.g. after adding ORG_ALIASES) on non-email
+ * rows that have no orgGovId yet, and writes only orgGovId/orgName for rows that now
+ * resolve — every other column, including hand-set categories, is left alone.
  */
 import { sql } from "../tools/db.ts";
 import {
@@ -28,6 +33,7 @@ import {
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
 const FORCE = args.includes("--force");
+const LINK_ONLY = args.includes("--link-only");
 const limitArg = args.find((a) => a.startsWith("--limit"));
 const LIMIT = limitArg ? parseInt(limitArg.split("=")[1] ?? args[args.indexOf(limitArg) + 1], 10) : undefined;
 
@@ -52,7 +58,9 @@ interface Row {
 }
 
 async function fetchRows(): Promise<Row[]> {
-  const untouchedFilter = FORCE
+  const untouchedFilter = LINK_ONLY
+    ? sql`WHERE "orgGovId" IS NULL AND "fileType" <> 'EMAIL' AND "storageUrl" NOT LIKE 'https://docs.google.com/%'`
+    : FORCE
     ? sql``
     : sql`WHERE "orgGovId" IS NULL
             AND "documentYear" IS NULL
@@ -162,6 +170,23 @@ async function main() {
     row,
     meta: deriveDocumentMetadata(row as DocumentInput, orgIndex),
   }));
+
+  if (LINK_ONLY) {
+    const linked = results.filter((r) => r.meta.orgGovId);
+    const byOrg = new Map<string, number>();
+    for (const { meta } of linked) byOrg.set(meta.orgName!, (byOrg.get(meta.orgName!) ?? 0) + 1);
+    console.log(`\n[backfill] ${linked.length} unlinked document(s) now resolve to an org:`);
+    for (const [k, v] of [...byOrg.entries()].sort((a, b) => b[1] - a[1])) console.log(`  ${k}: ${v}`);
+    if (APPLY) {
+      for (const { row, meta } of linked) {
+        await sql`UPDATE "KnowledgeDocument" SET "orgGovId" = ${meta.orgGovId}, "orgName" = ${meta.orgName} WHERE id = ${row.id}`;
+      }
+      console.log(`[backfill] linked ${linked.length} document(s).`);
+    } else {
+      console.log("[backfill] dry run only — re-run with --apply to write.");
+    }
+    return;
+  }
 
   summarize(results);
 
