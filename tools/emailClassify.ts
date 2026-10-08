@@ -33,6 +33,37 @@ function headerValue(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, n
 const AUTOMATED_SENDER_RE = /no-?reply|do-?not-?reply|notifications?@|calendar-notification@google\.com|mailer-daemon/i;
 const CALENDAR_SUBJECT_RE = /^(invitation|accepted|declined|updated invitation|canceled event|new event):/i;
 
+// ── Zoom meeting summaries ──────────────────────────────────────────────────
+
+const ZOOM_SUMMARY_SENDER_RE = /\bno-reply@zoom\.us\b/i;
+const ZOOM_SUMMARY_SUBJECT_RE = /^\s*meeting summary for\s+\S/i;
+
+/** Zoom's AI Companion recap ("Meeting summary for <Meeting> (<date>)"), sent to every attendee. */
+export function isZoomSummary(from: string, subject: string): boolean {
+  return ZOOM_SUMMARY_SENDER_RE.test(from) && ZOOM_SUMMARY_SUBJECT_RE.test(subject);
+}
+
+export function isZoomSummaryMetadata(metadata: gmail_v1.Schema$Message): boolean {
+  const headers = metadata.payload?.headers;
+  return isZoomSummary(headerValue(headers, "From"), headerValue(headers, "Subject"));
+}
+
+const ZOOM_DATED_TITLE_RE = /meeting summary for\s+(.+?)\s*\((\d{1,2}\/\d{1,2}\/\d{4})\)/i;
+
+/**
+ * Dedup key stored in emailMessageId for a Zoom summary. Each attendee's copy has its own
+ * Message-ID and slightly different body (per-recipient links), and the subject has no
+ * date, so the key is the dated title from the body — "Meeting summary for <name> (MM/DD/YYYY)".
+ * Falls back to subject + the UTC day it was sent if the body lacks that line.
+ */
+export function zoomSummaryKey(msg: Pick<ParsedMessage, "subject" | "textBody" | "date">): string {
+  const dated = msg.textBody.match(ZOOM_DATED_TITLE_RE);
+  const basis = dated
+    ? `${dated[1]} ${dated[2]}`
+    : `${msg.subject.replace(/^\s*meeting summary for\s+/i, "")} sent ${new Date(msg.date).toISOString().slice(0, 10)}`;
+  return `zoom-summary:${basis.trim().replace(/\s+/g, " ").toLowerCase()}`;
+}
+
 /** Cheap pre-filter on message metadata — skip obvious automated/bulk mail before paying for a full body fetch. */
 export function isNoiseMessage(metadata: gmail_v1.Schema$Message): boolean {
   const headers = metadata.payload?.headers;
@@ -227,3 +258,53 @@ export async function classifyEmail(
 }
 
 export { buildOrgIndex };
+
+/**
+ * Whether a meeting summary covers anything that must stay out of the knowledge base.
+ * Asked for every summary (they're few), and errs toward excluding when the model's reply
+ * can't be read — a meeting is often a mix of routine and sensitive items.
+ */
+async function isSensitiveMeeting(subject: string, body: string): Promise<boolean> {
+  const ai = createClassifierAI();
+  const prompt = `CG Charitable is a small grant-making foundation. This is an automatic summary of one of its meetings.
+
+Subject: ${subject}
+Summary (may be truncated):
+${body.slice(0, 6000)}
+
+Does this meeting discuss any sensitive topic: the compensation, benefits, job performance, hiring, termination or reporting structure of CG Charitable's own staff or board; anyone's health, medical, family or other personal matters; immigration or visas; legal disputes; or passwords/account credentials? Routine discussion of partner orgs, grants, finances, travel logistics or projects is NOT sensitive. Reply with ONLY a JSON object, no prose: {"sensitive": true|false}`;
+
+  try {
+    const raw = await ai.respond([{ role: "user", content: prompt }]);
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return true;
+    return (JSON.parse(match[0]) as { sensitive?: boolean }).sensitive !== false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Classifies a Zoom meeting summary. Kept unless it trips the staff-personnel rules or the
+ * sensitive-meeting check. Always CG_INTERNAL MEETING_NOTES; tagged with an org only when
+ * the meeting title names one — a team meeting's body mentions many orgs in passing.
+ */
+export async function classifyMeetingSummary(
+  email: Pick<ParsedMessage, "from" | "to" | "cc" | "subject" | "textBody">,
+  ctx: ClassifyContext,
+): Promise<EmailClassification> {
+  const docProvenance: DocProvenance = "CG_INTERNAL";
+  if (sensitiveEmailReason(email) || (await isSensitiveMeeting(email.subject, email.textBody))) {
+    return { ingest: false, orgGovId: null, orgName: null, categories: [], docProvenance };
+  }
+  const title = email.subject.replace(/^\s*meeting summary for\s+/i, "");
+  const org = matchOrg(title, ctx.orgIndex);
+  // Not classifyCategories: a long recap touches most topic keywords in passing.
+  return {
+    ingest: true,
+    orgGovId: org?.govId ?? null,
+    orgName: org ? (ctx.orgNameByGovId.get(org.govId) ?? org.name) : null,
+    categories: ["MEETING_NOTES"],
+    docProvenance,
+  };
+}

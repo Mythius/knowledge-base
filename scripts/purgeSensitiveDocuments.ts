@@ -25,8 +25,8 @@
  */
 import { sql } from "../tools/db.ts";
 import { sensitiveEmailReason, sensitiveFileReason, sensitiveTextReason } from "../tools/sensitiveContent.ts";
-import { isStaffPersonnelEmail } from "../tools/emailClassify.ts";
-import { findLabelIds, getMessageMetadata, listMessageIdsWithLabels } from "../tools/gmail.ts";
+import { isStaffPersonnelEmail, isZoomSummaryMetadata, zoomSummaryKey } from "../tools/emailClassify.ts";
+import { findLabelIds, getMessageFull, getMessageMetadata, listMessageIdsWithLabels } from "../tools/gmail.ts";
 
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
@@ -113,6 +113,11 @@ async function main(): Promise<void> {
       const labelIds = await findLabelIds(mailbox, EXCLUDE_LABELS);
       for await (const gmailId of listMessageIdsWithLabels(mailbox, labelIds)) {
         const meta = await getMessageMetadata(mailbox, gmailId);
+        if (isZoomSummaryMetadata(meta)) {
+          // Stored under the meeting key, not the Message-ID (see ingestEmails.ts).
+          messageIds.add(zoomSummaryKey(await getMessageFull(mailbox, gmailId)));
+          continue;
+        }
         const messageId = meta.payload?.headers?.find((h) => h.name?.toLowerCase() === "message-id")?.value;
         if (messageId) messageIds.add(messageId);
       }

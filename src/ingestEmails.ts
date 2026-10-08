@@ -2,7 +2,16 @@ import { Queue } from "bullmq";
 import { prisma } from "../tools/prisma.ts";
 import { chunkText } from "../tools/VectorTable.ts";
 import { getOrgs } from "./datarequest.ts";
-import { buildOrgIndex, classifyEmail, fallbackFingerprint, isNoiseMessage, type ClassifyContext } from "../tools/emailClassify.ts";
+import {
+  buildOrgIndex,
+  classifyEmail,
+  classifyMeetingSummary,
+  fallbackFingerprint,
+  isNoiseMessage,
+  isZoomSummaryMetadata,
+  zoomSummaryKey,
+  type ClassifyContext,
+} from "../tools/emailClassify.ts";
 import { deriveEmailFields } from "../tools/emailParse.ts";
 import {
   findLabelIds,
@@ -97,13 +106,17 @@ async function ingestMessage(
   const db = prisma as any;
   try {
     const metadata = await getMessageMetadata(mailbox, gmailId);
-    if (metadata.labelIds?.some((id) => excludedLabelIds.has(id)) || isNoiseMessage(metadata)) {
+    // Zoom summaries come from a no-reply sender, so they're let through ahead of the noise filter.
+    const zoomSummary = isZoomSummaryMetadata(metadata);
+    if (metadata.labelIds?.some((id) => excludedLabelIds.has(id)) || (!zoomSummary && isNoiseMessage(metadata))) {
       stats.skipped++;
       return;
     }
 
     const msg = await getMessageFull(mailbox, gmailId);
-    const fingerprint = msg.messageId || fallbackFingerprint(msg);
+    // Every attendee gets their own copy of a Zoom summary (different Message-IDs), so it's
+    // keyed on the meeting's dated title instead — later copies hit the existing check below.
+    const fingerprint = zoomSummary ? zoomSummaryKey(msg) : msg.messageId || fallbackFingerprint(msg);
 
     const existing = await db.knowledgeDocument.findFirst({ where: { emailMessageId: fingerprint }, select: { id: true } });
     if (existing) {
@@ -111,7 +124,7 @@ async function ingestMessage(
       return;
     }
 
-    const classification = await classifyEmail(msg, ctx);
+    const classification = zoomSummary ? await classifyMeetingSummary(msg, ctx) : await classifyEmail(msg, ctx);
     if (!classification.ingest) {
       // "See attached" emails with thin bodies fail text classification but are plausibly
       // exactly the financial/report content this pipeline is for — flag for a human look.
@@ -252,9 +265,31 @@ async function ingestEmails(mailboxes: string[]): Promise<void> {
   }
 }
 
+/**
+ * One-off catch-up for Zoom meeting summaries already sitting in the mailboxes — incremental
+ * sync only sees new mail. Doesn't touch the sync cursor; safe to re-run (deduped by subject).
+ */
+async function backfillZoomSummaries(mailboxes: string[], days: number): Promise<void> {
+  if (!mailboxes.length) throw new Error("No mailboxes configured — set GMAIL_INGEST_MAILBOXES");
+  const stats: Stats = { created: 0, skipped: 0, failed: 0, needsReview: [] };
+  const ctx = await buildClassifyContext();
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  for (const mailbox of mailboxes) {
+    const ids = listAllMessageIds(mailbox, since, 'from:no-reply@zoom.us subject:"meeting summary for"');
+    await processIds(mailbox, ids, ctx, stats);
+  }
+  console.log(`\n[ingest-emails] zoom backfill done — created ${stats.created}, skipped ${stats.skipped}, failed ${stats.failed}`);
+}
+
 // Usage: `bun src/ingestEmails.ts`, configured via GMAIL_INGEST_MAILBOXES / GMAIL_INGEST_DOMAIN
+//        `bun src/ingestEmails.ts --zoom-backfill [days]` to pick up past Zoom meeting summaries
 if (import.meta.main) {
-  ingestEmails(MAILBOXES)
+  const zoomIdx = process.argv.indexOf("--zoom-backfill");
+  const run =
+    zoomIdx >= 0
+      ? backfillZoomSummaries(MAILBOXES, parseInt(process.argv[zoomIdx + 1] ?? "", 10) || BACKFILL_DAYS)
+      : ingestEmails(MAILBOXES);
+  run
     .then(() => process.exit(0))
     .catch((err) => {
       console.error(err);

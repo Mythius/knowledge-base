@@ -182,10 +182,13 @@ export async function getMessageFull(mailbox: string, gmailId: string): Promise<
   return parseMessage(res.data);
 }
 
-/** Bounded full backfill — used on first run per mailbox, or after a historyId expires. */
-export async function* listAllMessageIds(mailbox: string, after?: Date): AsyncGenerator<string> {
+/**
+ * Bounded full backfill — used on first run per mailbox, or after a historyId expires.
+ * `search` is an extra Gmail search expression (e.g. `from:no-reply@zoom.us`) to narrow it.
+ */
+export async function* listAllMessageIds(mailbox: string, after?: Date, search?: string): AsyncGenerator<string> {
   const gmail = gmailClientFor(mailbox);
-  const q = after ? `after:${Math.floor(after.getTime() / 1000)}` : undefined;
+  const q = [after ? `after:${Math.floor(after.getTime() / 1000)}` : "", search ?? ""].filter(Boolean).join(" ") || undefined;
   let pageToken: string | undefined;
   do {
     const res = await gmail.users.messages.list({ userId: "me", q, pageToken, maxResults: 500 });
