@@ -11,6 +11,7 @@ import {
   type Category,
 } from "../tools/documentMetadata.ts";
 import { splitByOrgHeadings, type SectionOrg } from "../tools/orgSections.ts";
+import { sensitiveDocumentReason } from "../tools/sensitiveContent.ts";
 import { getOrgs } from "./datarequest.ts";
 
 const docQueue = new Queue("document-processing", {
@@ -115,6 +116,14 @@ async function ingestGoogleDocs(urls: string[], extraCategories: Category[] = []
           },
         ];
       }
+
+      // Dropped records still clear their previous version below, so a doc that turns
+      // sensitive is removed from the KB on its next refresh.
+      records = records.filter((r) => {
+        const reason = sensitiveDocumentReason(r.storageUrl, r.filename, r.rawText);
+        if (reason) console.log(`[gdocs] excluded ${r.filename}: sensitive content (${reason})`);
+        return !reason;
+      });
 
       console.log(`[gdocs] "${doc.name}" (modified ${doc.modifiedTime ?? "?"}) -> ${records.length} document(s)`);
       for (const r of records) console.log(`    ${r.orgGovId ?? "(no govId)"}\t${r.rawText.length} chars\t${r.filename}`);

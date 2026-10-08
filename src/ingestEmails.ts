@@ -5,6 +5,7 @@ import { getOrgs } from "./datarequest.ts";
 import { buildOrgIndex, classifyEmail, fallbackFingerprint, isNoiseMessage, type ClassifyContext } from "../tools/emailClassify.ts";
 import { deriveEmailFields } from "../tools/emailParse.ts";
 import {
+  findLabelIds,
   getCurrentHistoryId,
   getMessageFull,
   getMessageMetadata,
@@ -29,6 +30,8 @@ const BACKFILL_DAYS = parseInt(process.env.GMAIL_INGEST_BACKFILL_DAYS || "730", 
 // the same Message-ID (e.g. an internal email in both Sent and Inbox) are already handled
 // by the P2002 catch in ingestMessage, so this can safely be > 1.
 const CONCURRENCY = parseInt(process.env.GMAIL_INGEST_CONCURRENCY || "8", 10);
+// Gmail labels staff use to mark mail that must never be ingested, whatever its content.
+const EXCLUDE_LABELS = (process.env.GMAIL_INGEST_EXCLUDE_LABELS || "CLASSIFIED,payroll").split(",");
 
 /** Runs `fn` over `items` with at most `concurrency` in flight at once. */
 async function pMap<T>(items: T[], concurrency: number, fn: (item: T) => Promise<void>): Promise<void> {
@@ -84,11 +87,17 @@ function parseHeaderDate(date: string): Date | null {
  * message's own processing problems — logged and counted as failed so one bad message
  * can't stall the rest of a mailbox's sync or block its historyId cursor from advancing.
  */
-async function ingestMessage(mailbox: string, gmailId: string, ctx: ClassifyContext, stats: Stats): Promise<void> {
+async function ingestMessage(
+  mailbox: string,
+  gmailId: string,
+  ctx: ClassifyContext,
+  excludedLabelIds: Set<string>,
+  stats: Stats,
+): Promise<void> {
   const db = prisma as any;
   try {
     const metadata = await getMessageMetadata(mailbox, gmailId);
-    if (isNoiseMessage(metadata)) {
+    if (metadata.labelIds?.some((id) => excludedLabelIds.has(id)) || isNoiseMessage(metadata)) {
       stats.skipped++;
       return;
     }
@@ -160,9 +169,10 @@ async function ingestMessage(mailbox: string, gmailId: string, ctx: ClassifyCont
 }
 
 async function processIds(mailbox: string, ids: AsyncGenerator<string>, ctx: ClassifyContext, stats: Stats): Promise<void> {
+  const excludedLabelIds = await findLabelIds(mailbox, EXCLUDE_LABELS);
   const gmailIds: string[] = [];
   for await (const id of ids) gmailIds.push(id);
-  await pMap(gmailIds, CONCURRENCY, (gmailId) => ingestMessage(mailbox, gmailId, ctx, stats));
+  await pMap(gmailIds, CONCURRENCY, (gmailId) => ingestMessage(mailbox, gmailId, ctx, excludedLabelIds, stats));
 }
 
 async function fullBackfill(mailbox: string, since: Date, ctx: ClassifyContext, stats: Stats): Promise<void> {

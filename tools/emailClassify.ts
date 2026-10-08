@@ -4,7 +4,9 @@
  * src/ingestEmails.ts: an email is only ever persisted when it resolves to a known
  * partner org, or matches a configured topic and an LLM pass confirms it's genuinely
  * relevant to a partner org's work or to CG Charitable's own finances/operations.
- * Everything else — the bulk of 5 people's inboxes — is never written to disk.
+ * Everything else — the bulk of 5 people's inboxes — is never written to disk. CG staff
+ * personnel matters (pay, payroll, benefits, health insurance, immigration) are rejected
+ * up front by tools/sensitiveContent.ts, and the LLM pass is told to reject them too.
  */
 
 import { createHash } from "crypto";
@@ -18,6 +20,7 @@ import {
   type OrgIndex,
   type OrgRef,
 } from "./documentMetadata.ts";
+import { sensitiveEmailReason, STAFF_PERSONNEL_GATE_RE } from "./sensitiveContent.ts";
 import type { gmail_v1 } from "googleapis";
 import type { ParsedMessage } from "./gmail.ts";
 
@@ -113,7 +116,8 @@ Email subject: ${subject}
 Email body (may be truncated):
 ${body.slice(0, 3000)}
 
-Is this email substantively about (a) one of the known partner orgs' work, finances, or programs, or (b) CG Charitable's own internal finances or operations — not just incidental use of a topic word (e.g. "my personal budget" doesn't count)? Reply with ONLY a JSON object, no prose: {"relevant": true|false, "orgName": "<exact partner org name from the list if (a), or null if (b) or not relevant>"}`;
+Is this email substantively about (a) one of the known partner orgs' work, finances, or programs, or (b) CG Charitable's own internal finances or operations — not just incidental use of a topic word (e.g. "my personal budget" doesn't count)?
+CG Charitable's own staff personnel matters are NOT relevant and must be rejected: any CG employee's salary, compensation or raises, payroll, benefits or health insurance, hiring paperwork, visas or immigration, performance, or personal documents (SSN, passport, tax forms). Discussion of a partner org's staff salaries or headcount is still relevant under (a). Reply with ONLY a JSON object, no prose: {"relevant": true|false, "orgName": "<exact partner org name from the list if (a), or null if (b) or not relevant>"}`;
 
   try {
     const raw = await ai.respond([{ role: "user", content: prompt }]);
@@ -123,6 +127,32 @@ Is this email substantively about (a) one of the known partner orgs' work, finan
     return { relevant: !!parsed.relevant, orgName: parsed.orgName ?? null };
   } catch {
     return { relevant: false, orgName: null };
+  }
+}
+
+/**
+ * Whether an email is about the compensation or job performance of CG Charitable's own
+ * staff. Only asked when STAFF_PERSONNEL_GATE_RE matches, so most mail never pays for it.
+ * Errs toward excluding (true) when the model's reply can't be read.
+ */
+export async function isStaffPersonnelEmail(subject: string, body: string): Promise<boolean> {
+  if (!STAFF_PERSONNEL_GATE_RE.test(`${subject}\n${body}`)) return false;
+  const ai = createClassifierAI();
+  const prompt = `CG Charitable is a small grant-making foundation. Its staff use @cgcharitable.org addresses; its partner orgs are separate nonprofits it funds.
+
+Email subject: ${subject}
+Email body (may be truncated):
+${body.slice(0, 3000)}
+
+Is this email about the compensation (salary, raises, bonuses, benefits), job performance, role or reporting structure, hiring or termination of CG Charitable's OWN staff or board? Answer false if it is about a partner org's employees (e.g. collecting or checking a partner's salary or headcount data). Reply with ONLY a JSON object, no prose: {"staffPersonnel": true|false}`;
+
+  try {
+    const raw = await ai.respond([{ role: "user", content: prompt }]);
+    const match = raw.match(/\{[\s\S]*\}/);
+    if (!match) return true;
+    return (JSON.parse(match[0]) as { staffPersonnel?: boolean }).staffPersonnel !== false;
+  } catch {
+    return true;
   }
 }
 
@@ -138,6 +168,14 @@ export async function classifyEmail(
   const externalDomains = [...new Set(participants.map(domainOf).filter((d) => d !== ctx.internalDomain))];
   const allInternal = externalDomains.length === 0;
   const docProvenance: DocProvenance = allInternal ? "CG_INTERNAL" : "ORG_SUBMITTED";
+
+  const partnerDomains = externalDomains.filter((d) => ctx.domainMap.has(d));
+  if (
+    sensitiveEmailReason(email, partnerDomains) ||
+    (!partnerDomains.length && (await isStaffPersonnelEmail(email.subject, email.textBody)))
+  ) {
+    return { ingest: false, orgGovId: null, orgName: null, categories: [], docProvenance };
+  }
 
   const haystack = `${email.subject}\n${email.textBody}`;
   const categories = classifyCategories(haystack);

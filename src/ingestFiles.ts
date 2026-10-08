@@ -7,6 +7,7 @@ import { extractText } from "../tools/textExtract.ts";
 import { transcribeVideo } from "../tools/geminiVideo.ts";
 import { compressVideo } from "../tools/videoCompress.ts";
 import { buildOrgIndex, classifyProcessingIssue, deriveDocumentMetadata, toPrismaDate, type OrgIndex } from "../tools/documentMetadata.ts";
+import { sensitiveFileReason, sensitiveTextReason } from "../tools/sensitiveContent.ts";
 import { getOrgs } from "./datarequest.ts";
 
 const docQueue = new Queue("document-processing", {
@@ -53,7 +54,6 @@ const DEFAULT_ROOTS: Root[] = [
   { path: `${FINANCE}\\6_Tax\\Tax Payments`, exts: FINANCE_EXTS },
   { path: `${FINANCE}\\7_FP&A`, exts: FINANCE_EXTS },
   { path: `${FINANCE}\\0_GL`, exts: FINANCE_EXTS },
-  { path: `${FINANCE}\\1_Expenses`, exts: FINANCE_EXTS, exclude: [`${FINANCE}\\1_Expenses\\0ld`] },
   { path: `${FINANCE}\\3_Financials_and_Audits`, exts: FINANCE_EXTS },
   // Organized by year; only the last two are wanted.
   { path: `${FINANCE}\\5_Investment_Portfolio\\2025`, exts: FINANCE_EXTS },
@@ -94,6 +94,7 @@ interface IngestStats {
   created: number;
   skipped: number;
   failed: number;
+  excluded: number;
 }
 
 interface Failure {
@@ -156,6 +157,19 @@ async function ingestDoc(
     const text = await extractText(buffer, fileType);
     if (!text.trim()) {
       throw new Error("no extractable text (scanned/image-only or empty document?)");
+    }
+
+    const sensitive = sensitiveTextReason(filePath, text);
+    if (sensitive) {
+      // Keep the row (no text, no chunks) so later runs see the path as done and don't
+      // re-extract it every time.
+      await db.knowledgeDocument.update({
+        where: { id: documentId },
+        data: { status: "FAILED", errorMessage: `excluded: sensitive content (${sensitive})`, containsPii: true },
+      });
+      console.log(`[ingest] excluded ${filename}: sensitive content (${sensitive})`);
+      stats.excluded++;
+      return;
     }
 
     await db.knowledgeDocument.update({ where: { id: documentId }, data: { rawText: text, status: "CHUNKING" } });
@@ -263,7 +277,7 @@ async function ingestVideo(
  */
 async function ingestFiles(roots: Root[]): Promise<void> {
   const db = prisma as any;
-  const stats: IngestStats = { created: 0, skipped: 0, failed: 0 };
+  const stats: IngestStats = { created: 0, skipped: 0, failed: 0, excluded: 0 };
   const failures: Failure[] = [];
 
   const orgs = await getOrgs();
@@ -280,6 +294,10 @@ async function ingestFiles(roots: Root[]): Promise<void> {
       const docType = DOC_EXT[ext];
       const videoMime = VIDEO_EXT[ext];
       if (!docType && !videoMime) continue;
+      if (sensitiveFileReason(filePath, basename(filePath))) {
+        stats.excluded++;
+        continue;
+      }
 
       const existing = await db.knowledgeDocument.findFirst({
         where: { storageUrl: filePath },
@@ -299,7 +317,9 @@ async function ingestFiles(roots: Root[]): Promise<void> {
     }
   }
 
-  console.log(`\n[ingest] done — created ${stats.created}, skipped ${stats.skipped}, failed ${stats.failed}`);
+  console.log(
+    `\n[ingest] done — created ${stats.created}, skipped ${stats.skipped}, excluded ${stats.excluded} (sensitive), failed ${stats.failed}`,
+  );
   if (failures.length) {
     console.log(`[ingest] ${failures.length} file(s) failed:`);
     for (const f of failures) console.log(`  - ${f.path}\n      ${f.error}`);

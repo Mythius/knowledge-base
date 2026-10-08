@@ -69,5 +69,6 @@ bun src/workers/documentProcessor.ts   # Document ingestion worker (separate pro
 | [src/routes/knowledge/upload.ts](src/routes/knowledge/upload.ts) | Document upload endpoint |
 | [src/routes/knowledge/curate.ts](src/routes/knowledge/curate.ts) | Chunk curation endpoints |
 | [src/workers/documentProcessor.ts](src/workers/documentProcessor.ts) | Extract → chunk → embed pipeline |
+| [tools/sensitiveContent.ts](tools/sensitiveContent.ts) | Rules keeping CG staff personnel data (payroll, pay, health insurance, visas, travel docs) out of every ingest path; `scripts/purgeSensitiveDocuments.ts` applies them to stored data |
 | [prisma/schema.prisma](prisma/schema.prisma) | Full DB schema |
 | [example-env](example-env) | All supported env vars with comments |

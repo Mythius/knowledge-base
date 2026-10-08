@@ -3,6 +3,7 @@ import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "../../tools/prisma.ts";
 import { embedText, chunkText } from "../../tools/VectorTable.ts";
 import { extractText } from "../../tools/textExtract.ts";
+import { sensitiveDocumentReason } from "../../tools/sensitiveContent.ts";
 import { classifyProcessingIssue } from "../../tools/documentMetadata.ts";
 
 const redisConnection = {
@@ -64,6 +65,16 @@ async function handleExtract(data: { documentId: string }): Promise<void> {
   console.log(`[extract] parsing text from ${doc.fileType}…`);
   const rawText = await extractText(buffer, doc.fileType);
   console.log(`[extract] extracted ${rawText.length} chars`);
+
+  const sensitive = sensitiveDocumentReason(doc.storageUrl, doc.filename, rawText);
+  if (sensitive) {
+    await db.knowledgeDocument.update({
+      where: { id: documentId },
+      data: { status: "FAILED", errorMessage: `excluded: sensitive content (${sensitive})`, containsPii: true },
+    });
+    console.log(`[extract] "${doc.filename}" excluded: sensitive content (${sensitive})`);
+    return;
+  }
 
   await db.knowledgeDocument.update({
     where: { id: documentId },

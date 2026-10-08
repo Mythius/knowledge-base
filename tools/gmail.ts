@@ -148,6 +148,34 @@ export async function getMessageMetadata(mailbox: string, gmailId: string): Prom
   return res.data;
 }
 
+/**
+ * Ids of the mailbox's labels named in `names` (case-insensitive). A nested label matches
+ * on any level, so "payroll" also catches "HR/Payroll".
+ */
+export async function findLabelIds(mailbox: string, names: string[]): Promise<Set<string>> {
+  const wanted = new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean));
+  if (!wanted.size) return new Set();
+  const gmail = gmailClientFor(mailbox);
+  const res = await gmail.users.labels.list({ userId: "me" });
+  const ids = (res.data.labels ?? [])
+    .filter((l) => l.id && l.name && l.name.split("/").some((part) => wanted.has(part.trim().toLowerCase())))
+    .map((l) => l.id!);
+  return new Set(ids);
+}
+
+/** Message ids carrying any of `labelIds` (one list call per label). */
+export async function* listMessageIdsWithLabels(mailbox: string, labelIds: Iterable<string>): AsyncGenerator<string> {
+  const gmail = gmailClientFor(mailbox);
+  for (const labelId of labelIds) {
+    let pageToken: string | undefined;
+    do {
+      const res = await gmail.users.messages.list({ userId: "me", labelIds: [labelId], includeSpamTrash: true, pageToken });
+      for (const m of res.data.messages ?? []) if (m.id) yield m.id;
+      pageToken = res.data.nextPageToken ?? undefined;
+    } while (pageToken);
+  }
+}
+
 export async function getMessageFull(mailbox: string, gmailId: string): Promise<ParsedMessage> {
   const gmail = gmailClientFor(mailbox);
   const res = await gmail.users.messages.get({ userId: "me", id: gmailId, format: "full" });
